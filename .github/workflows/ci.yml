@@ -1,76 +1,7 @@
 name: CI
 
 on:
-   push:
-      branches: [main]
-      paths:
-         - "packages/**"
-         - "crates/**"
-         - "scripts/**"
-         - "bazel/**"
-         - "MODULE.bazel"
-         - "MODULE.bazel.lock"
-         - "BUILD.bazel"
-         - ".bazelrc"
-         - ".bazelignore"
-         - ".bazelversion"
-         - "Cargo.toml"
-         - "Cargo.lock"
-         - "deny.toml"
-         - "about.toml"
-         - "LICENSE"
-         - "THIRD-PARTY-NOTICES.txt"
-         - "rust-toolchain.toml"
-         - "rustfmt.toml"
-         # A root dependency change (lockfile/catalog/patches) affects every
-         # job; without these a lockfile-only push shipped untested — and a
-         # release retagged onto such a commit never triggered its run.
-         - "bun.lock"
-         - "bunfig.toml"
-         - "package.json"
-         - "patches/**"
-         - ".github/**"
-   pull_request:
-      branches: [main]
-      paths:
-         - "packages/**"
-         - "crates/**"
-         - "scripts/**"
-         - "bazel/**"
-         - "MODULE.bazel"
-         - "MODULE.bazel.lock"
-         - "BUILD.bazel"
-         - ".bazelrc"
-         - ".bazelignore"
-         - ".bazelversion"
-         - "Cargo.toml"
-         - "Cargo.lock"
-         - "deny.toml"
-         - "about.toml"
-         - "LICENSE"
-         - "THIRD-PARTY-NOTICES.txt"
-         - "rust-toolchain.toml"
-         - "rustfmt.toml"
-         - "bun.lock"
-         - "bunfig.toml"
-         - "package.json"
-         - "patches/**"
-         - ".github/**"
    workflow_dispatch:
-      inputs:
-         skip_npm:
-            description: "Skip npm publish"
-            type: boolean
-            default: false
-
-# Release runs publish a `v*` tag pushed atomically with main HEAD; sharing
-# the cheap branch-wide `CI-refs/heads/main` group meant a later main push
-# silently cancelled the in-flight release and left the tag without a GitHub
-# Release or npm publish (#2564). Detect release runs at workflow-scheduling
-# time via the release-script commit subject (`chore: bump version to vX.Y.Z`),
-# via `v*` tag-ref dispatches, and via manual dispatches whose tag-on-HEAD
-# status is only known after checkout; scope them to a per-sha group with no
-# cancellation. Every other event keeps branch-wide cancellation for PR/main churn.
 concurrency:
    group: "${{ github.workflow }}-${{ (startsWith(github.event.head_commit.message, 'chore: bump version to ') || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && format('release-{0}', github.sha) || github.ref }}"
    cancel-in-progress: "${{ !(startsWith(github.event.head_commit.message, 'chore: bump version to ') || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}"

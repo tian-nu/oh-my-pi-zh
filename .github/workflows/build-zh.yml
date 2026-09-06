@@ -1,0 +1,82 @@
+name: Build 汉化版 omp (linux-x64)
+
+# 用 GitHub 托管 runner 从 zh-CN 分支云构建汉化版 omp 单文件二进制（含 native 插件）。
+# 触发方式：手动（workflow_dispatch，任选分支）或每次 push 到 zh-CN 自动构建。
+# 产物：Actions artifact `omp-linux-x64-zh` -> packages/coding-agent/binaries/omp-linux-x64
+
+on:
+   workflow_dispatch:
+   push:
+      branches: [zh-CN]
+      paths:
+         - "packages/**"
+         - "crates/**"
+         - "scripts/**"
+         - "bazel/**"
+         - "MODULE.bazel"
+         - "MODULE.bazel.lock"
+         - "BUILD.bazel"
+         - ".bazelrc"
+         - ".bazelversion"
+         - "Cargo.toml"
+         - "Cargo.lock"
+         - "rust-toolchain.toml"
+         - "rustfmt.toml"
+         - "bun.lock"
+         - "package.json"
+         - ".github/workflows/build-zh.yml"
+
+permissions:
+   contents: read
+
+concurrency:
+   group: build-zh
+   cancel-in-progress: true
+
+jobs:
+   build-linux-x64:
+      runs-on: ubuntu-22.04
+      steps:
+         - uses: actions/checkout@v4
+           with:
+              fetch-depth: 1
+
+         - uses: ./.github/actions/bun-install
+
+         # GitHub-hosted runners do not ship bazelisk (omp-kata images do).
+         - name: Install bazelisk
+           run: |
+              set -euo pipefail
+              sudo curl -fsSL -o /usr/local/bin/bazelisk \
+                https://github.com/bazelbuild/bazelisk/releases/download/v1.26.0/bazelisk-linux-amd64
+              sudo chmod +x /usr/local/bin/bazelisk
+              bazelisk version
+
+         # Build each addon in its own invocation (upstream note: concurrent
+         # cdylib links OOM smaller runners; serializing keeps peak RSS sane).
+         - name: Build native addon (linux-x64-baseline)
+           uses: ./.github/actions/bazel-natives
+           with:
+              targets: linux-x64-baseline
+
+         - name: Build native addon (linux-x64-modern)
+           uses: ./.github/actions/bazel-natives
+           with:
+              targets: linux-x64-modern
+
+         - name: Compile omp binary (linux-x64)
+           run: |
+              set -euo pipefail
+              if [ "$(ulimit -Sn)" != unlimited ] && [ "$(ulimit -Sn)" -lt 65536 ]; then ulimit -Sn 65536 || true; fi
+              bun scripts/ci-release-build-binaries.ts --targets=linux-x64
+
+         - name: Smoke test binary
+           run: ./packages/coding-agent/binaries/omp-linux-x64 --version
+
+         - name: Upload binary artifact
+           uses: actions/upload-artifact@v4
+           with:
+              name: omp-linux-x64-zh
+              path: packages/coding-agent/binaries/omp-linux-x64
+              if-no-files-found: error
+              retention-days: 14
