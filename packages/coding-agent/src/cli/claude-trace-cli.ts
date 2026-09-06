@@ -181,7 +181,7 @@ function contentLength(headers: readonly HeaderEntry[]): number {
 	if (!value) return 0;
 	const parsed = Number.parseInt(value, 10);
 	if (!Number.isSafeInteger(parsed) || parsed < 0) {
-		throw new Error(`Invalid Content-Length header: ${value}`);
+		throw new Error(`无效的 Content-Length 头: ${value}`);
 	}
 	return parsed;
 }
@@ -240,7 +240,7 @@ function parseChunkedBody(buffer: Buffer): ChunkedParseResult {
 		const sizeText = (semicolon >= 0 ? sizeLine.slice(0, semicolon) : sizeLine).trim();
 		const size = Number.parseInt(sizeText, 16);
 		if (!Number.isSafeInteger(size) || size < 0) {
-			throw new Error(`Invalid chunk size: ${sizeLine}`);
+			throw new Error(`无效的 chunk 大小: ${sizeLine}`);
 		}
 		const dataStart = lineEnd + CRLF.length;
 		if (size === 0) {
@@ -434,24 +434,24 @@ export function formatCapturedMessagesExchange(exchange: CapturedMessagesExchang
 	const responseLine =
 		`${exchange.response.version || "HTTP"} ${exchange.response.statusCode ?? ""} ${exchange.response.statusMessage}`.trim();
 	return [
-		`# /v1/messages capture (${exchange.target})`,
+		`# /v1/messages 抓取 (${exchange.target})`,
 		"",
-		"## Request",
+		"## 请求",
 		`${exchange.request.method} ${exchange.request.path} ${exchange.request.version}`.trim(),
 		"",
-		"### Headers",
+		"### 头部",
 		requestHeaders,
 		"",
-		"### Body",
+		"### 请求体",
 		exchange.request.body,
 		"",
-		"## Response",
+		"## 响应",
 		responseLine,
 		"",
-		"### Headers",
+		"### 头部",
 		responseHeaders,
 		"",
-		"### Body",
+		"### 响应体",
 		exchange.response.body,
 		"",
 	].join("\n");
@@ -497,7 +497,7 @@ export class ClaudeMessagesProxy {
 			server.off("error", onError);
 			const address = server.address();
 			if (!address || typeof address === "string") {
-				reject(new Error("Proxy did not bind to a TCP address"));
+				reject(new Error("代理未能绑定到 TCP 地址"));
 				return;
 			}
 			this.#port = address.port;
@@ -510,7 +510,7 @@ export class ClaudeMessagesProxy {
 		this.#stopped = true;
 		for (const waiter of this.#waiters.splice(0)) {
 			clearTimeout(waiter.timer);
-			waiter.reject(new Error("Proxy stopped before a /v1/messages response completed"));
+			waiter.reject(new Error("代理在 /v1/messages 响应完成之前已停止"));
 		}
 		for (const socket of this.#sockets) {
 			socket.destroy();
@@ -530,12 +530,12 @@ export class ClaudeMessagesProxy {
 	waitForCapture(timeoutMs: number): Promise<CapturedMessagesExchange> {
 		const existing = this.#completed.shift();
 		if (existing) return Promise.resolve(existing);
-		if (this.#stopped) return Promise.reject(new Error("Proxy is stopped"));
+		if (this.#stopped) return Promise.reject(new Error("代理已停止"));
 		const { promise, resolve, reject } = Promise.withResolvers<CapturedMessagesExchange>();
 		const timer = setTimeout(() => {
 			const index = this.#waiters.findIndex(waiter => waiter.resolve === resolve);
 			if (index >= 0) this.#waiters.splice(index, 1);
-			reject(new Error("Timed out waiting for a completed /v1/messages response"));
+			reject(new Error("等待 /v1/messages 响应完成时超时"));
 		}, timeoutMs);
 		this.#waiters.push({ resolve, reject, timer });
 		return promise;
@@ -756,13 +756,13 @@ export async function runClaudeMessagesCapture(args: ClaudeTraceCommandArgs = {}
 		},
 	);
 	try {
-		const outputSuffix = () => (ptyOutput.trim() ? `\n\nClaude output:\n${ptyOutput}` : "");
+		const outputSuffix = () => (ptyOutput.trim() ? `\n\nClaude 输出:\n${ptyOutput}` : "");
 		void (async () => {
 			await Bun.sleep(args.inputDelayMs ?? DEFAULT_INPUT_DELAY_MS);
 			try {
 				session.write(`${message}\r`);
 			} catch (error) {
-				ptyOutput += `\n[omp input write failed: ${errorMessage(error)}]\n`;
+				ptyOutput += `\n[omp 输入写入失败: ${errorMessage(error)}]\n`;
 			}
 		})();
 		const captureRace = proxy.waitForCapture(timeoutMs).then(
@@ -788,10 +788,10 @@ export async function runClaudeMessagesCapture(args: ClaudeTraceCommandArgs = {}
 		}
 		if (first.kind === "pty-error") {
 			throw new Error(
-				`Claude command failed before /v1/messages completed: ${errorMessage(first.error)}${outputSuffix()}`,
+				`Claude 命令在 /v1/messages 完成前失败: ${errorMessage(first.error)}${outputSuffix()}`,
 			);
 		}
-		throw new Error(`Claude command exited before /v1/messages completed${outputSuffix()}`);
+		throw new Error(`Claude 命令在 /v1/messages 完成前已退出${outputSuffix()}`);
 	} finally {
 		terminal.dispose();
 		await proxy.stop();
@@ -800,7 +800,7 @@ export async function runClaudeMessagesCapture(args: ClaudeTraceCommandArgs = {}
 
 export async function runClaudeTraceCommand(args: ClaudeTraceCommandArgs = {}): Promise<void> {
 	process.stderr.write(
-		`Starting Claude trace proxy on ${args.host ?? DEFAULT_PROXY_HOST}:${args.port ?? DEFAULT_PROXY_PORT}\n`,
+		`正在 ${args.host ?? DEFAULT_PROXY_HOST}:${args.port ?? DEFAULT_PROXY_PORT} 上启动 Claude trace 代理\n`,
 	);
 	const exchange = await runClaudeMessagesCapture(args);
 	const output = args.json ? `${JSON.stringify(exchange, null, 2)}\n` : formatCapturedMessagesExchange(exchange);

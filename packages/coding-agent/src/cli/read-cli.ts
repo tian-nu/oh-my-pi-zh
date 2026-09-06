@@ -37,7 +37,7 @@ function shouldDiscoverMcp(path: string): boolean {
 
 export async function runReadCommand(cmd: ReadCommandArgs): Promise<void> {
 	if (!cmd.path) {
-		process.stderr.write(chalk.red("error: path is required\n"));
+		process.stderr.write(chalk.red("错误：必须提供路径\n"));
 		process.exit(1);
 	}
 
@@ -82,7 +82,7 @@ export async function runReadCommand(cmd: ReadCommandArgs): Promise<void> {
 			} else if (block.type === "image") {
 				const decodedBytes = Buffer.from(block.data, "base64").byteLength;
 				process.stdout.write(
-					chalk.dim(`[image content: ${block.mimeType}, ${decodedBytes} bytes base64-decoded]\n`),
+					chalk.dim(`[图片内容：${block.mimeType}，base64 解码后 ${decodedBytes} 字节]\n`),
 				);
 			}
 		}

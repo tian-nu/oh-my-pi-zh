@@ -83,11 +83,11 @@ export async function runStatsCommand(cmd: StatsCommandArgs): Promise<void> {
 
 	// Sync session files first
 	const progress = createSyncProgressReporter();
-	process.stderr.write("Syncing session files...\n");
+	process.stderr.write("正在同步会话文件...\n");
 	const { processed, files } = await syncAllSessions({ onProgress: progress.onProgress });
 	progress.finish();
 	const total = await getTotalMessageCount();
-	console.log(`Synced ${processed} new entries from ${files} files (${total} total)\n`);
+	console.log(`已同步 ${processed} 条新记录（来自 ${files} 个文件，共 ${total} 条）\n`);
 
 	if (cmd.json) {
 		const stats = await getDashboardStats();
@@ -103,16 +103,16 @@ export async function runStatsCommand(cmd: StatsCommandArgs): Promise<void> {
 	// Start the dashboard server
 	const { hostname, port } = await startServer(cmd.port, cmd.host);
 	const url = formatStatsDashboardUrl(hostname, port);
-	console.log(chalk.green(`Dashboard available at: ${url}`));
+	console.log(chalk.green(`仪表盘地址：${url}`));
 
 	// Open browser
 	openPath(url);
 
-	console.log("Press Ctrl+C to stop\n");
+	console.log("按 Ctrl+C 停止\n");
 
 	// Keep process running
 	process.on("SIGINT", () => {
-		console.log("\nShutting down...");
+		console.log("\n正在关闭...");
 		closeDb();
 		process.exit(0);
 	});
@@ -126,37 +126,37 @@ async function printStatsSummary(): Promise<void> {
 	const stats = await getDashboardStats();
 	const { overall, byModel, byFolder } = stats;
 
-	console.log(chalk.bold("\n=== AI Usage Statistics ===\n"));
+	console.log(chalk.bold("\n=== AI 使用统计 ===\n"));
 
-	console.log(chalk.bold("Overall:"));
-	console.log(`  Requests: ${formatNumber(overall.totalRequests)} (${formatNumber(overall.failedRequests)} errors)`);
-	console.log(`  Error Rate: ${formatPercent(overall.errorRate)}`);
-	console.log(`  Total Tokens: ${formatNumber(overall.totalInputTokens + overall.totalOutputTokens)}`);
-	console.log(`  Input Tokens: ${formatNumber(overall.totalInputTokens)}`);
-	console.log(`  Output Tokens: ${formatNumber(overall.totalOutputTokens)}`);
-	console.log(`  Cache Rate: ${formatPercent(overall.cacheRate)}`);
-	console.log(`  Cache Savings: ${formatPercent(overall.cacheSavings)}`);
-	console.log(`  Total Cost: ${formatCost(overall.totalCost)}`);
-	console.log(`  Premium Requests: ${formatNumber(normalizePremiumRequests(overall.totalPremiumRequests ?? 0))}`);
-	console.log(`  Avg Duration: ${overall.avgDuration !== null ? formatDuration(overall.avgDuration) : "-"}`);
-	console.log(`  Avg TTFT: ${overall.avgTtft !== null ? formatDuration(overall.avgTtft) : "-"}`);
+	console.log(chalk.bold("总体："));
+	console.log(`  请求数：${formatNumber(overall.totalRequests)}（${formatNumber(overall.failedRequests)} 个错误）`);
+	console.log(`  错误率：${formatPercent(overall.errorRate)}`);
+	console.log(`  总 Token：${formatNumber(overall.totalInputTokens + overall.totalOutputTokens)}`);
+	console.log(`  输入 Token：${formatNumber(overall.totalInputTokens)}`);
+	console.log(`  输出 Token：${formatNumber(overall.totalOutputTokens)}`);
+	console.log(`  缓存命中率：${formatPercent(overall.cacheRate)}`);
+	console.log(`  缓存节省：${formatPercent(overall.cacheSavings)}`);
+	console.log(`  总成本：${formatCost(overall.totalCost)}`);
+	console.log(`  高级请求数：${formatNumber(normalizePremiumRequests(overall.totalPremiumRequests ?? 0))}`);
+	console.log(`  平均耗时：${overall.avgDuration !== null ? formatDuration(overall.avgDuration) : "-"}`);
+	console.log(`  平均 TTFT：${overall.avgTtft !== null ? formatDuration(overall.avgTtft) : "-"}`);
 	if (overall.avgTokensPerSecond !== null) {
-		console.log(`  Avg Tokens/s: ${overall.avgTokensPerSecond.toFixed(1)}`);
+		console.log(`  平均 Token/秒：${overall.avgTokensPerSecond.toFixed(1)}`);
 	}
 
 	if (byModel.length > 0) {
-		console.log(chalk.bold("\nBy Model:"));
+		console.log(chalk.bold("\n按模型："));
 		for (const m of byModel.slice(0, 10)) {
 			console.log(
-				`  ${m.model}: ${formatNumber(m.totalRequests)} reqs, ${formatCost(m.totalCost)}, ${formatPercent(m.cacheRate)} cache rate, ${formatPercent(m.cacheSavings)} cache savings`,
+				`  ${m.model}: ${formatNumber(m.totalRequests)} 次请求, ${formatCost(m.totalCost)}, 缓存命中率 ${formatPercent(m.cacheRate)}, 缓存节省 ${formatPercent(m.cacheSavings)}`,
 			);
 		}
 	}
 
 	if (byFolder.length > 0) {
-		console.log(chalk.bold("\nBy Folder:"));
+		console.log(chalk.bold("\n按目录："));
 		for (const f of byFolder.slice(0, 10)) {
-			console.log(`  ${f.folder}: ${formatNumber(f.totalRequests)} reqs, ${formatCost(f.totalCost)}`);
+			console.log(`  ${f.folder}: ${formatNumber(f.totalRequests)} 次请求, ${formatCost(f.totalCost)}`);
 		}
 	}
 

@@ -38,15 +38,15 @@ export function parseSetupArgs(args: string[]): SetupCommandArgs | undefined {
 	}
 
 	if (args.length < 2) {
-		console.error(chalk.red(`Usage: ${APP_NAME} setup <component>`));
-		console.error(`Valid components: ${VALID_COMPONENTS.join(", ")}`);
+		console.error(chalk.red(`用法: ${APP_NAME} setup <component>`));
+		console.error(`有效的组件: ${VALID_COMPONENTS.join(", ")}`);
 		process.exit(1);
 	}
 
 	const component = args[1];
 	if (!VALID_COMPONENTS.includes(component as SetupComponent)) {
-		console.error(chalk.red(`Unknown component: ${component}`));
-		console.error(`Valid components: ${VALID_COMPONENTS.join(", ")}`);
+		console.error(chalk.red(`未知组件: ${component}`));
+		console.error(`有效的组件: ${VALID_COMPONENTS.join(", ")}`);
 		process.exit(1);
 	}
 
@@ -127,22 +127,22 @@ async function handlePythonSetup(flags: { json?: boolean; check?: boolean }): Pr
 	}
 
 	if (!check.pythonPath) {
-		console.error(chalk.red(`${theme.status.error} Python not found`));
-		console.error(chalk.dim("Install Python 3.8+ or set python.interpreter to its executable path"));
+		console.error(chalk.red(`${theme.status.error} 未找到 Python`));
+		console.error(chalk.dim("请安装 Python 3.8+，或将 python.interpreter 设置为其可执行文件路径"));
 		process.exit(1);
 	}
 
 	console.log(chalk.dim(`Python: ${check.pythonPath}`));
 	if (check.usingManagedEnv) {
-		console.log(chalk.dim(`Using managed environment: ${check.managedEnvPath}`));
+		console.log(chalk.dim(`使用受管环境: ${check.managedEnvPath}`));
 	}
 
 	if (check.available) {
-		console.log(chalk.green(`\n${theme.status.success} Python execution is ready`));
+		console.log(chalk.green(`\n${theme.status.success} Python 执行环境已就绪`));
 		return;
 	}
 
-	console.error(chalk.red(`\n${theme.status.error} Python interpreter reported failure`));
+	console.error(chalk.red(`\n${theme.status.error} Python 解释器报告失败`));
 	process.exit(1);
 }
 
@@ -183,7 +183,7 @@ function buildSpeechComponents(): SpeechComponent[] {
 			},
 			ensure: onProgress =>
 				downloadSttModel(settings.get("stt.modelName"), progress =>
-					onProgress({ stage: `Downloading ${progress.label} model`, percent: progress.percent }),
+					onProgress({ stage: `正在下载 ${progress.label} 模型`, percent: progress.percent }),
 				),
 		},
 		{
@@ -210,7 +210,7 @@ function buildSpeechComponents(): SpeechComponent[] {
 				const ok = await downloadTtsModel(settings.get("tts.localModel"), progress =>
 					onProgress({ stage: progress.stage, percent: progress.percent }),
 				);
-				if (!ok) throw new Error("Failed to download the local text-to-speech model.");
+				if (!ok) throw new Error("下载本地文本转语音模型失败。");
 			},
 		},
 	];
@@ -240,12 +240,12 @@ async function handleSpeechSetup(flags: { json?: boolean; check?: boolean }): Pr
 	}
 
 	if (flags.check) {
-		console.log(chalk.bold("Speech dependencies:"));
+		console.log(chalk.bold("语音依赖:"));
 		let allReady = true;
 		for (const component of components) {
 			const ready = await component.isReady();
 			if (!ready) allReady = false;
-			const mark = ready ? chalk.green("[ok]") : chalk.yellow("[missing]");
+			const mark = ready ? chalk.green("[正常]") : chalk.yellow("[缺失]");
 			console.log(`  ${mark} ${component.name}: ${await component.status()}`);
 		}
 		if (!allReady) process.exit(1);
@@ -258,10 +258,10 @@ async function handleSpeechSetup(flags: { json?: boolean; check?: boolean }): Pr
 			await component.pick();
 		}
 		if (await component.isReady()) {
-			console.log(chalk.green(`${theme.status.success} ${component.name} ready`));
+			console.log(chalk.green(`${theme.status.success} ${component.name} 已就绪`));
 			continue;
 		}
-		console.log(chalk.dim(`Preparing ${component.name}...`));
+		console.log(chalk.dim(`正在准备 ${component.name}...`));
 		try {
 			await component.ensure(progress => {
 				const percent = typeof progress.percent === "number" ? ` (${progress.percent}%)` : "";
@@ -270,16 +270,16 @@ async function handleSpeechSetup(flags: { json?: boolean; check?: boolean }): Pr
 			process.stdout.write("\n");
 		} catch (err) {
 			process.stdout.write("\n");
-			const msg = err instanceof Error ? err.message : `Failed to set up ${component.name}`;
+			const msg = err instanceof Error ? err.message : `设置 ${component.name} 失败`;
 			console.error(chalk.red(`${theme.status.error} ${msg}`));
 			process.exit(1);
 		}
 	}
 
-	console.log(chalk.green(`\n${theme.status.success} Speech is ready`));
+	console.log(chalk.green(`\n${theme.status.success} 语音功能已就绪`));
 	console.log(
 		chalk.dim(
-			"Enable speech-to-text via stt.enabled, then hold Space to talk (or bind app.stt.toggle); enable the speech-generation tool via speechgen.enabled; speak replies aloud via speech.enabled.",
+			"通过 stt.enabled 启用语音转文字，然后按住空格键说话（或绑定 app.stt.toggle）；通过 speechgen.enabled 启用语音生成工具；通过 speech.enabled 朗读回复。",
 		),
 	);
 }
@@ -288,25 +288,25 @@ async function handleSpeechSetup(flags: { json?: boolean; check?: boolean }): Pr
  * Print setup command help.
  */
 export function printSetupHelp(): void {
-	console.log(`${chalk.bold(`${APP_NAME} setup`)} - Run onboarding or install dependencies for optional features
+	console.log(`${chalk.bold(`${APP_NAME} setup`)} - 运行引导流程或为可选功能安装依赖
 
-${chalk.bold("Usage:")}
-  ${APP_NAME} setup                     Run the onboarding wizard
+${chalk.bold("用法:")}
+  ${APP_NAME} setup                     运行引导向导
   ${APP_NAME} setup <component> [options]
 
-${chalk.bold("Components:")}
-  python    Verify a Python 3 interpreter is reachable for code execution
-  speech    Pick and download speech-to-text and text-to-speech models
+${chalk.bold("组件:")}
+  python    验证可访问的 Python 3 解释器以供代码执行
+  speech    选择并下载语音转文字和文字转语音模型
 
-${chalk.bold("Options:")}
-  -c, --check   Check if dependencies are installed without installing
-  --json        Output status as JSON
+${chalk.bold("选项:")}
+  -c, --check   仅检查依赖是否已安装，不安装
+  --json        以 JSON 格式输出状态
 
-${chalk.bold("Examples:")}
-  ${APP_NAME} setup                  Run the onboarding wizard
-  ${APP_NAME} setup python           Check Python execution dependencies
-  ${APP_NAME} setup speech           Pick and download the STT and TTS models
-  ${APP_NAME} setup speech --check   Check if speech dependencies are available
-  ${APP_NAME} setup python --check   Check if Python execution is available
+${chalk.bold("示例:")}
+  ${APP_NAME} setup                  运行引导向导
+  ${APP_NAME} setup python           检查 Python 执行依赖
+  ${APP_NAME} setup speech           选择并下载 STT 和 TTS 模型
+  ${APP_NAME} setup speech --check   检查语音依赖是否可用
+  ${APP_NAME} setup python --check   检查 Python 执行是否可用
 `);
 }

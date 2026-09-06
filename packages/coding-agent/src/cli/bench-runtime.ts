@@ -153,10 +153,10 @@ export function resolveBenchTargets(
 			continue;
 		}
 		if (!result.model) {
-			errors.push(`${selector}: model not found`);
+			errors.push(`${selector}: 未找到模型`);
 			continue;
 		}
-		if (result.warning) writeStderr(`${chalk.yellow(`Warning: ${result.warning}`)}\n`);
+		if (result.warning) writeStderr(`${chalk.yellow(`警告：${result.warning}`)}\n`);
 		let model = result.model;
 		const authSelector = result.configuredPatterns?.[result.configuredPatternIndex ?? 0] ?? selector;
 		const authenticated = resolveAuthenticatedAlternative(
@@ -168,7 +168,7 @@ export function resolveBenchTargets(
 		if (authenticated) {
 			writeStderr(
 				`${chalk.yellow(
-					`Warning: no credentials for "${model.provider}"; benchmarking ${formatModelString(authenticated)} instead. Pin "${formatModelString(model)}" to force it.`,
+					`警告："${model.provider}" 没有已配置的凭据；改用 ${formatModelString(authenticated)} 进行基准测试。固定（pin）"${formatModelString(model)}" 可强制使用原模型。`,
 				)}\n`,
 			);
 			model = authenticated;
@@ -180,7 +180,7 @@ export function resolveBenchTargets(
 		});
 	}
 	if (errors.length > 0) {
-		throw new Error(`Could not resolve ${errors.length === 1 ? "model" : "models"}:\n${errors.join("\n")}`);
+		throw new Error(`无法解析以下${errors.length === 1 ? "模型" : "模型（共 " + errors.length + " 个）"}：\n${errors.join("\n")}`);
 	}
 	return resolved;
 }

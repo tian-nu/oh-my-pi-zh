@@ -41,7 +41,7 @@ export async function listGrievances(options: ListGrievancesOptions): Promise<vo
 			console.log("[]");
 		} else {
 			console.log(
-				chalk.dim("No grievances database found. Auto-QA has not recorded any reports yet (or was disabled)."),
+				chalk.dim("未找到 grievances 数据库。Auto-QA 尚未记录任何报告（或已被禁用）。"),
 			);
 		}
 		return;
@@ -65,7 +65,7 @@ export async function listGrievances(options: ListGrievancesOptions): Promise<vo
 		}
 
 		if (rows.length === 0) {
-			console.log(chalk.dim("No grievances recorded yet."));
+			console.log(chalk.dim("尚未记录任何 grievance。"));
 			return;
 		}
 
@@ -77,7 +77,7 @@ export async function listGrievances(options: ListGrievancesOptions): Promise<vo
 			console.log();
 		}
 
-		console.log(chalk.dim(`Showing ${rows.length} most recent${options.tool ? ` for ${options.tool}` : ""}`));
+		console.log(chalk.dim(`显示最近 ${rows.length} 条${options.tool ? `（工具: ${options.tool}）` : ""}`));
 	} finally {
 		db.close();
 	}
@@ -94,12 +94,12 @@ export async function listGrievances(options: ListGrievancesOptions): Promise<vo
 export async function cleanGrievances(options: CleanGrievancesOptions): Promise<void> {
 	const selectors = [options.id !== undefined, !!options.tool, !!options.all].filter(Boolean).length;
 	if (selectors === 0) {
-		console.error(chalk.red("Specify exactly one of --id, --tool, or --all."));
+		console.error(chalk.red("请从 --id、--tool、--all 中恰好指定一个。"));
 		process.exitCode = 1;
 		return;
 	}
 	if (selectors > 1) {
-		console.error(chalk.red("--id, --tool, and --all are mutually exclusive."));
+		console.error(chalk.red("--id、--tool 和 --all 互斥，不能同时使用。"));
 		process.exitCode = 1;
 		return;
 	}
@@ -110,7 +110,7 @@ export async function cleanGrievances(options: CleanGrievancesOptions): Promise<
 			console.log(JSON.stringify({ deleted: 0 }));
 		} else {
 			console.log(
-				chalk.dim("No grievances database found. Auto-QA has not recorded any reports yet (or was disabled)."),
+				chalk.dim("未找到 grievances 数据库。Auto-QA 尚未记录任何报告（或已被禁用）。"),
 			);
 		}
 		return;
@@ -142,13 +142,12 @@ export async function cleanGrievances(options: CleanGrievancesOptions): Promise<
 		}
 
 		if (deleted === 0) {
-			console.log(chalk.dim("No matching grievances to delete."));
+			console.log(chalk.dim("没有匹配的 grievance 可删除。"));
 			return;
 		}
 
-		const scope =
-			options.id !== undefined ? `#${options.id}` : options.tool ? `for ${options.tool}` : "(all entries)";
-		console.log(chalk.green(`Deleted ${deleted} grievance${deleted === 1 ? "" : "s"} ${scope}.`));
+		const scope = options.id !== undefined ? `#${options.id}` : options.tool ? `（工具: ${options.tool}）` : "（全部条目）";
+		console.log(chalk.green(`已删除 ${deleted} 条 grievance ${scope}。`));
 	} finally {
 		db.close();
 	}
@@ -181,7 +180,7 @@ function makeProgressBar(total: number, width = 30): ProgressBar {
 		const pct = `${Math.floor(ratio * 100)
 			.toString()
 			.padStart(3, " ")}%`;
-		process.stdout.write(`\r${chalk.cyan("Pushing")} [${bar}] ${pct} ${done}/${total}`);
+		process.stdout.write(`\r${chalk.cyan("推送中")} [${bar}] ${pct} ${done}/${total}`);
 	};
 	render(0);
 	return {
@@ -203,7 +202,7 @@ export async function pushGrievances(options: PushGrievancesOptions): Promise<vo
 		if (options.json) {
 			console.log(JSON.stringify({ pushed: 0, ok: false, skipped: true, reason: "no_db" }));
 		} else {
-			console.log(chalk.dim("No grievances database found — nothing to push."));
+			console.log(chalk.dim("未找到 grievances 数据库 — 没有可推送的内容。"));
 		}
 		return;
 	}
@@ -230,23 +229,23 @@ export async function pushGrievances(options: PushGrievancesOptions): Promise<vo
 		if (result.skipped) {
 			console.log(
 				chalk.yellow(
-					"Push skipped — no endpoint configured. Set `dev.autoqaPush.endpoint` or `PI_AUTO_QA_PUSH_URL`.",
+					"推送已跳过 — 未配置 endpoint。请设置 `dev.autoqaPush.endpoint` 或 `PI_AUTO_QA_PUSH_URL`。",
 				),
 			);
 			return;
 		}
 		if (total === 0) {
-			console.log(chalk.dim("Nothing to push — all grievances are already shipped."));
+			console.log(chalk.dim("没有需要推送的内容 — 所有 grievance 均已上报。"));
 			return;
 		}
 		if (result.ok) {
-			console.log(chalk.green(`Pushed ${result.pushed}/${total} grievance${result.pushed === 1 ? "" : "s"}.`));
+			console.log(chalk.green(`已推送 ${result.pushed}/${total} 条 grievance。`));
 			return;
 		}
 		const remaining = total - result.pushed;
 		console.log(
 			chalk.red(
-				`Push failed after ${result.pushed}/${total}; ${remaining} grievance${remaining === 1 ? "" : "s"} remain unpushed.`,
+				`推送失败，已推送 ${result.pushed}/${total}；剩余 ${remaining} 条 grievance 未推送。`,
 			),
 		);
 		process.exitCode = 1;

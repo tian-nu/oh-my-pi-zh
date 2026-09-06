@@ -42,7 +42,7 @@ import { COMPUTER_WORKER_ARG } from "./tools/computer/protocol";
 
 if (Bun.semver.order(Bun.version, MIN_BUN_VERSION) < 0) {
 	process.stderr.write(
-		`error: Bun runtime must be >= ${MIN_BUN_VERSION} (found v${Bun.version}). Please upgrade: bun upgrade\n`,
+		`错误：Bun 运行时版本必须 >= ${MIN_BUN_VERSION}（当前为 v${Bun.version}）。请升级：bun upgrade\n`,
 	);
 	process.exit(1);
 }
@@ -58,7 +58,7 @@ setProcessName(APP_NAME);
 const isProcessEntry = import.meta.main || process.env.PI_COMPILED === "true";
 
 function formatLicenseOutput(): string {
-	return `OMP License and Third-Party Notices\n\n${rootLicense.trimEnd()}\n\n${thirdPartyNotices.trimEnd()}\n`;
+	return `OMP 许可证与第三方声明\n\n${rootLicense.trimEnd()}\n\n${thirdPartyNotices.trimEnd()}\n`;
 }
 
 // Worker-host entry declaration (Worker threads and worker subprocesses
@@ -369,7 +369,7 @@ export async function runCli(argv: string[]): Promise<void> {
 		if (extracted.aliasName !== undefined) {
 			const profile = extracted.profile ?? getActiveProfile();
 			if (!profile) {
-				throw new Error("--alias requires --profile <name> or OMP_PROFILE");
+				throw new Error("--alias 需要 --profile <name> 或 OMP_PROFILE");
 			}
 			const result = await installProfileAlias({
 				profile,
@@ -377,15 +377,15 @@ export async function runCli(argv: string[]): Promise<void> {
 				command: resolveProfileAliasCommandFromProcess(),
 			});
 			process.stdout.write(
-				`Created ${result.aliasName} for profile ${result.profile} in ${result.configPath}\n` +
-					`Restart your shell or run: ${result.reloadedWith}\n` +
-					`Then use: ${result.aliasName} update, ${result.aliasName} --version, or ${result.aliasName}\n`,
+				`已为 profile ${result.profile} 创建 ${result.aliasName}，配置位于 ${result.configPath}\n` +
+					`请重启 shell 或运行：${result.reloadedWith}\n` +
+					`然后即可使用：${result.aliasName} update、${result.aliasName} --version 或 ${result.aliasName}\n`,
 			);
 			return;
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		process.stderr.write(`Error: ${message}\n`);
+		process.stderr.write(`错误：${message}\n`);
 		process.exitCode = 1;
 		return;
 	}
@@ -457,7 +457,7 @@ export async function runCli(argv: string[]): Promise<void> {
 		// Everything else that isn't a known subcommand routes to "launch".
 		const resolved = resolveCliArgv(resolvedArgv);
 		if ("error" in resolved) {
-			process.stderr.write(`error: ${resolved.error}\n`);
+			process.stderr.write(`错误：${resolved.error}\n`);
 			process.exitCode = 1;
 			return;
 		}

@@ -47,7 +47,7 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 
 		const stat = fs.statSync(absolutePath, { throwIfNoEntry: false });
 		if (!stat) {
-			console.error(chalk.red(`Error: File not found: ${absolutePath}`));
+			console.error(chalk.red(`错误：找不到文件：${absolutePath}`));
 			process.exit(1);
 		}
 
@@ -79,7 +79,7 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 		const maxBytes = mimeType ? MAX_CLI_IMAGE_BYTES : MAX_CLI_TEXT_BYTES;
 		if (stat.size > maxBytes) {
 			console.error(
-				chalk.yellow(`Warning: Skipping file contents (too large: ${formatBytes(stat.size)}): ${absolutePath}`),
+				chalk.yellow(`警告：已跳过文件内容（文件过大：${formatBytes(stat.size)}）：${absolutePath}`),
 			);
 			text += `<file name="${absolutePath}">(skipped: too large, ${formatBytes(stat.size)})</file>\n`;
 			continue;
@@ -91,7 +91,7 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 			buffer = await Bun.file(absolutePath).bytes();
 		} catch (err) {
 			if (isEnoent(err)) {
-				console.error(chalk.red(`Error: File not found: ${absolutePath}`));
+				console.error(chalk.red(`错误：找不到文件：${absolutePath}`));
 				process.exit(1);
 			}
 			throw err;
@@ -153,7 +153,7 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 				text += `<file name="${absolutePath}">\n${content}\n</file>\n`;
 			} catch (error: unknown) {
 				const message = error instanceof Error ? error.message : String(error);
-				console.error(chalk.red(`Error: Could not read file ${absolutePath}: ${message}`));
+				console.error(chalk.red(`错误：无法读取文件 ${absolutePath}：${message}`));
 				process.exit(1);
 			}
 		}

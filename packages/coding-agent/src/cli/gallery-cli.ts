@@ -32,10 +32,10 @@ export type GalleryState = (typeof GALLERY_STATES)[number];
 
 /** User-facing labels printed above each rendered lifecycle state. */
 export const GALLERY_STATE_LABELS: Record<GalleryState, string> = {
-	streaming: "streaming args",
-	progress: "in progress",
-	success: "done",
-	error: "failed",
+	streaming: "流式参数中",
+	progress: "进行中",
+	success: "已完成",
+	error: "失败",
 };
 
 const GALLERY_STATE_ALIASES: Record<string, GalleryState> = {
@@ -68,7 +68,7 @@ export function parseGallerySurfaces(surfaces: readonly string[] | undefined): G
 			continue;
 		}
 		if (!GALLERY_SURFACES.includes(token as GallerySurface)) {
-			throw new Error(`Invalid --surface '${raw}'. Valid values: ${GALLERY_SURFACE_TOKENS.join(", ")}`);
+			throw new Error(`无效的 --surface '${raw}'。有效值: ${GALLERY_SURFACE_TOKENS.join(", ")}`);
 		}
 		requested.add(token as GallerySurface);
 	}
@@ -82,7 +82,7 @@ export function parseGalleryStates(states: readonly string[] | undefined): Galle
 	for (const raw of states) {
 		const state = GALLERY_STATE_ALIASES[raw.trim().toLowerCase()];
 		if (!state) {
-			throw new Error(`Invalid --state '${raw}'. Valid values: ${GALLERY_STATE_TOKENS.join(", ")}`);
+			throw new Error(`无效的 --state '${raw}'。有效值: ${GALLERY_STATE_TOKENS.join(", ")}`);
 		}
 		if (!parsed.includes(state)) parsed.push(state);
 	}
@@ -123,7 +123,7 @@ export interface GallerySection {
 }
 
 const GENERIC_ERROR: GalleryResult = {
-	content: [{ type: "text", text: "Error: operation failed" }],
+	content: [{ type: "text", text: "错误: 操作失败" }],
 	isError: true,
 };
 
@@ -251,7 +251,7 @@ async function renderGallerySections(
 			try {
 				for (const line of await renderGalleryState(name, fixture, state, width, expanded)) lines.push(line);
 			} catch (err) {
-				lines.push(theme.fg("error", `  render failed: ${String(err)}`));
+				lines.push(theme.fg("error", `  渲染失败: ${String(err)}`));
 			}
 		}
 		sections.push({ heading, lines });
@@ -283,7 +283,7 @@ async function renderPreviewSections(
 			try {
 				for (const line of await variant.render(width, expanded)) lines.push(line);
 			} catch (err) {
-				lines.push(theme.fg("error", `  render failed: ${String(err)}`));
+				lines.push(theme.fg("error", `  渲染失败: ${String(err)}`));
 			}
 		}
 		sections.push({ heading: entry.heading, lines });
@@ -341,19 +341,19 @@ export async function runGalleryCommand(args: GalleryCommandArgs): Promise<void>
 	if (surfaces.includes("tool") && args.tool) {
 		const knownTools = Array.from(new Set([...Object.keys(toolRenderers), ...Object.keys(galleryFixtures)])).sort();
 		if (!knownTools.includes(args.tool)) {
-			process.stdout.write(`Unknown tool '${args.tool}'. Known tools: ${knownTools.join(", ")}\n`);
+			process.stdout.write(`未知工具 '${args.tool}'。可用工具: ${knownTools.join(", ")}\n`);
 			return;
 		}
 	}
 	if (surfaces.includes("composer") && args.composer && !getComposerGalleryInventory().includes(args.composer)) {
 		process.stdout.write(
-			`Unknown composer '${args.composer}'. Known composers: ${getComposerGalleryInventory().join(", ")}\n`,
+			`未知 composer '${args.composer}'。可用 composer: ${getComposerGalleryInventory().join(", ")}\n`,
 		);
 		return;
 	}
 	if (surfaces.includes("segment") && args.segment && !getSegmentGalleryInventory().some(id => id === args.segment)) {
 		process.stdout.write(
-			`Unknown segment '${args.segment}'. Known segments: ${getSegmentGalleryInventory().join(", ")}\n`,
+			`未知 segment '${args.segment}'。可用 segment: ${getSegmentGalleryInventory().join(", ")}\n`,
 		);
 		return;
 	}

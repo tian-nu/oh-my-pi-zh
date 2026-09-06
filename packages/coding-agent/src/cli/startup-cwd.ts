@@ -55,9 +55,9 @@ export async function applyStartupCwd(parsed: Args): Promise<void> {
 			const code = (error as NodeJS.ErrnoException | null)?.code;
 			const hint =
 				code === "EACCES" || code === "EPERM"
-					? " On macOS, grant omp Files & Folders or Full Disk Access permission for the target directory."
+					? " 在 macOS 上，请为目标目录授予 omp「文件与文件夹」或「完全磁盘访问」权限。"
 					: "";
-			throw new Error(`Cannot change working directory to ${parsed.cwd}: ${reason}.${hint}`);
+			throw new Error(`无法将工作目录切换到 ${parsed.cwd}：${reason}。${hint}`);
 		}
 		// setProjectDir resolves the (possibly relative) target against the launch
 		// cwd and chdirs into it. Re-sync parsed.cwd to the resolved absolute path

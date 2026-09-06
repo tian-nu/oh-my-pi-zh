@@ -15,7 +15,7 @@ export async function pickCleanseTarget(checkers: readonly CleanseCheckerDescrip
 	const items: SelectItem[] = [
 		{
 			value: "all",
-			label: `Run all ${checkers.length} discovered checker${checkers.length === 1 ? "" : "s"}`,
+			label: `运行全部 ${checkers.length} 个已发现的检测器`,
 		},
 		...checkers.map(checker => ({
 			value: `checker:${checker.id}`,
@@ -24,11 +24,11 @@ export async function pickCleanseTarget(checkers: readonly CleanseCheckerDescrip
 		})),
 		{
 			value: "request",
-			label: "Describe what to fix…",
-			description: "A discovery agent figures out the command to run",
+			label: "描述要修复的问题…",
+			description: "由探测代理推断要运行的命令",
 		},
 	];
-	const selection = await selectOne("Select what to cleanse:", items);
+	const selection = await selectOne("选择要清理的内容：", items);
 	if (selection === null) return { kind: "cancel" };
 	if (selection === "all") return { kind: "all" };
 	if (selection === "request") {
@@ -52,7 +52,7 @@ export async function promptCleanseRequest(): Promise<string | null> {
 	const input = new Input();
 	input.onSubmit = value => finish(value.trim() || null);
 	input.onEscape = () => finish(null);
-	process.stdout.write('Describe what to detect and fix (e.g. "ts errors"):\n');
+	process.stdout.write('描述要检测并修复的内容（例如 "ts errors"）：\n');
 	ui.addChild(input);
 	ui.setFocus(input);
 	ui.start();

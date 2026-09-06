@@ -45,8 +45,8 @@ export async function runSSHCommand(cmd: SSHCommandArgs): Promise<void> {
 			await handleList(cmd);
 			break;
 		default:
-			process.stdout.write(chalk.red(`Unknown action: ${cmd.action}\n`));
-			process.stdout.write(`Valid actions: add, remove, list\n`);
+			process.stdout.write(chalk.red(`未知操作：${cmd.action}\n`));
+			process.stdout.write(`有效操作：add、remove、list\n`);
 			process.exitCode = 1;
 	}
 }
@@ -58,9 +58,9 @@ export async function runSSHCommand(cmd: SSHCommandArgs): Promise<void> {
 async function handleAdd(cmd: SSHCommandArgs): Promise<void> {
 	const name = cmd.args[0];
 	if (!name) {
-		process.stdout.write(chalk.red("Error: Host name required\n"));
+		process.stdout.write(chalk.red("错误：需要提供主机名\n"));
 		process.stdout.write(
-			chalk.dim("Usage: omp ssh add <name> --host <address> [--user <user>] [--port <port>] [--key <path>]\n"),
+			chalk.dim("用法：omp ssh add <name> --host <address> [--user <user>] [--port <port>] [--key <path>]\n"),
 		);
 		process.exitCode = 1;
 		return;
@@ -68,8 +68,8 @@ async function handleAdd(cmd: SSHCommandArgs): Promise<void> {
 
 	const host = cmd.flags.host;
 	if (!host) {
-		process.stdout.write(chalk.red("Error: --host is required\n"));
-		process.stdout.write(chalk.dim("Usage: omp ssh add <name> --host <address>\n"));
+		process.stdout.write(chalk.red("错误：必须提供 --host\n"));
+		process.stdout.write(chalk.dim("用法：omp ssh add <name> --host <address>\n"));
 		process.exitCode = 1;
 		return;
 	}
@@ -78,7 +78,7 @@ async function handleAdd(cmd: SSHCommandArgs): Promise<void> {
 	if (cmd.flags.port !== undefined) {
 		const port = Number.parseInt(cmd.flags.port, 10);
 		if (Number.isNaN(port) || port < 1 || port > 65535) {
-			process.stdout.write(chalk.red("Error: Port must be an integer between 1 and 65535\n"));
+			process.stdout.write(chalk.red("错误：端口必须是 1 到 65535 之间的整数\n"));
 			process.exitCode = 1;
 			return;
 		}
@@ -96,9 +96,9 @@ async function handleAdd(cmd: SSHCommandArgs): Promise<void> {
 
 	try {
 		await addSSHHost(filePath, name, hostConfig);
-		process.stdout.write(chalk.green(`Added SSH host "${name}" to ${scope} config\n`));
+		process.stdout.write(chalk.green(`已将 SSH 主机 "${name}" 添加到 ${scope} 配置\n`));
 	} catch (err) {
-		process.stdout.write(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));
+		process.stdout.write(chalk.red(`错误：${err instanceof Error ? err.message : String(err)}\n`));
 		process.exitCode = 1;
 	}
 }
@@ -106,8 +106,8 @@ async function handleAdd(cmd: SSHCommandArgs): Promise<void> {
 async function handleRemove(cmd: SSHCommandArgs): Promise<void> {
 	const name = cmd.args[0];
 	if (!name) {
-		process.stdout.write(chalk.red("Error: Host name required\n"));
-		process.stdout.write(chalk.dim("Usage: omp ssh remove <name> [--scope project|user]\n"));
+		process.stdout.write(chalk.red("错误：需要提供主机名\n"));
+		process.stdout.write(chalk.dim("用法：omp ssh remove <name> [--scope project|user]\n"));
 		process.exitCode = 1;
 		return;
 	}
@@ -117,9 +117,9 @@ async function handleRemove(cmd: SSHCommandArgs): Promise<void> {
 
 	try {
 		await removeSSHHost(filePath, name);
-		process.stdout.write(chalk.green(`Removed SSH host "${name}" from ${scope} config\n`));
+		process.stdout.write(chalk.green(`已从 ${scope} 配置中移除 SSH 主机 "${name}"\n`));
 	} catch (err) {
-		process.stdout.write(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));
+		process.stdout.write(chalk.red(`错误：${err instanceof Error ? err.message : String(err)}\n`));
 		process.exitCode = 1;
 	}
 }
@@ -143,13 +143,13 @@ async function handleList(cmd: SSHCommandArgs): Promise<void> {
 	const hasUser = Object.keys(userHosts).length > 0;
 
 	if (!hasProject && !hasUser) {
-		process.stdout.write(chalk.dim("No SSH hosts configured\n"));
-		process.stdout.write(chalk.dim("Add one with: omp ssh add <name> --host <address>\n"));
+		process.stdout.write(chalk.dim("尚未配置任何 SSH 主机\n"));
+		process.stdout.write(chalk.dim("使用以下命令添加：omp ssh add <name> --host <address>\n"));
 		return;
 	}
 
 	if (hasProject) {
-		process.stdout.write(chalk.bold("Project SSH Hosts (.omp/ssh.json):\n"));
+		process.stdout.write(chalk.bold("项目 SSH 主机 (.omp/ssh.json)：\n"));
 		printHosts(projectHosts);
 	}
 
@@ -158,7 +158,7 @@ async function handleList(cmd: SSHCommandArgs): Promise<void> {
 	}
 
 	if (hasUser) {
-		process.stdout.write(chalk.bold("User SSH Hosts (~/.omp/agent/ssh.json):\n"));
+		process.stdout.write(chalk.bold("用户 SSH 主机 (~/.omp/agent/ssh.json)：\n"));
 		printHosts(userHosts);
 	}
 }

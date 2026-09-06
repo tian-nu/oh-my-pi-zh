@@ -70,15 +70,15 @@ export function parseGrepArgs(args: string[]): GrepCommandArgs | undefined {
 
 export async function runGrepCommand(cmd: GrepCommandArgs): Promise<void> {
 	if (!cmd.pattern) {
-		console.error(chalk.red("Error: Pattern is required"));
+		console.error(chalk.red("错误：必须提供搜索模式"));
 		process.exit(1);
 	}
 
 	const searchPath = path.resolve(expandPath(cmd.path));
-	console.log(chalk.dim(`Searching in: ${searchPath}`));
-	console.log(chalk.dim(`Pattern: ${cmd.pattern}`));
+	console.log(chalk.dim(`搜索目录：${searchPath}`));
+	console.log(chalk.dim(`模式：${cmd.pattern}`));
 	console.log(
-		chalk.dim(`Mode: ${cmd.mode}, Limit: ${cmd.limit}, Context: ${cmd.context}, Gitignore: ${cmd.gitignore}`),
+		chalk.dim(`输出模式：${cmd.mode}，上限：${cmd.limit}，上下文行：${cmd.context}，遵循 .gitignore：${cmd.gitignore}`),
 	);
 
 	console.log("");
@@ -95,11 +95,11 @@ export async function runGrepCommand(cmd: GrepCommandArgs): Promise<void> {
 			gitignore: cmd.gitignore,
 		});
 
-		console.log(chalk.green(`Total matches: ${result.totalMatches}`));
-		console.log(chalk.green(`Files with matches: ${result.filesWithMatches}`));
-		console.log(chalk.green(`Files searched: ${result.filesSearched}`));
+		console.log(chalk.green(`总匹配数：${result.totalMatches}`));
+		console.log(chalk.green(`有匹配的文件数：${result.filesWithMatches}`));
+		console.log(chalk.green(`已搜索文件数：${result.filesSearched}`));
 		if (result.limitReached) {
-			console.log(chalk.yellow(`Limit reached: true`));
+			console.log(chalk.yellow(`已达上限：true`));
 		}
 		console.log("");
 
@@ -120,40 +120,40 @@ export async function runGrepCommand(cmd: GrepCommandArgs): Promise<void> {
 				}
 				console.log("");
 			} else if (cmd.mode === GrepOutputMode.Count) {
-				console.log(`${chalk.cyan(displayPath)}: ${match.matchCount ?? 0} matches`);
+				console.log(`${chalk.cyan(displayPath)}: ${match.matchCount ?? 0} 处匹配`);
 			} else {
 				console.log(chalk.cyan(displayPath));
 			}
 		}
 	} catch (err) {
-		console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
+		console.error(chalk.red(`错误：${err instanceof Error ? err.message : String(err)}`));
 		process.exit(1);
 	}
 }
 
 export function printGrepHelp(): void {
-	console.log(`${chalk.bold(`${APP_NAME} grep`)} - Test grep tool
+	console.log(`${chalk.bold(`${APP_NAME} grep`)} - grep 工具测试
 
-${chalk.bold("Usage:")}
+${chalk.bold("用法：")}
   ${APP_NAME} grep <pattern> [path] [options]
 
-${chalk.bold("Arguments:")}
-  pattern   Regex pattern to search for
-  path      Directory or file to search (default: .)
+${chalk.bold("参数：")}
+  pattern   要搜索的正则模式
+  path      要搜索的目录或文件（默认：.）
 
-${chalk.bold("Options:")}
-  -g, --glob <pattern>  Filter files by glob pattern
-  -l, --limit <n>       Max matches (default: 20)
-  -C, --context <n>     Context lines (default: 2)
-  -f, --files           Output file names only
-  -c, --count           Output match counts per file
-  -h, --help            Show this help
-  --no-gitignore        Include files excluded by .gitignore
+${chalk.bold("选项：")}
+  -g, --glob <pattern>  按 glob 模式过滤文件
+  -l, --limit <n>       最大匹配数（默认：20）
+  -C, --context <n>     上下文行数（默认：2）
+  -f, --files           仅输出文件名
+  -c, --count           输出每个文件的匹配计数
+  -h, --help            显示此帮助
+  --no-gitignore        包含被 .gitignore 排除的文件
 
-${chalk.bold("Environment:")}
-  PI_WALK_WORKERS=N    Set filesystem walker workers (default 4, 0 = auto)
+${chalk.bold("环境变量：")}
+  PI_WALK_WORKERS=N    设置文件系统遍历工作线程数（默认 4，0 = 自动）
 
-${chalk.bold("Examples:")}
+${chalk.bold("示例：")}
   ${APP_NAME} grep "import" src/
   ${APP_NAME} grep "TODO" . --glob "*.ts"
   ${APP_NAME} grep "function" --files

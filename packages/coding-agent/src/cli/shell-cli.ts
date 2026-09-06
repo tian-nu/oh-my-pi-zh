@@ -44,7 +44,7 @@ export function parseShellArgs(args: string[]): ShellCommandArgs | undefined {
 
 export async function runShellCommand(cmd: ShellCommandArgs): Promise<void> {
 	if (!process.stdin.isTTY) {
-		process.stderr.write("Error: shell console requires an interactive TTY.\n");
+		process.stderr.write("错误：shell 控制台需要交互式 TTY。\n");
 		process.exit(1);
 	}
 
@@ -63,23 +63,23 @@ export async function runShellCommand(cmd: ShellCommandArgs): Promise<void> {
 
 	const printHelp = () => {
 		process.stdout.write(
-			`${chalk.bold("Shell Console Commands")}
+			`${chalk.bold("Shell 控制台命令")}
 
 ` +
-				`${chalk.bold("Special Commands:")}
-  .help           Show this help
-  .exit, exit     Exit the console
+				`${chalk.bold("特殊命令：")}
+  .help           显示此帮助
+  .exit, exit     退出控制台
 
 ` +
-				`${chalk.bold("Options:")}
-  --cwd, -C <path>     Set working directory for commands
-  --timeout, -t <ms>   Timeout per command in milliseconds
-  --no-snapshot        Skip sourcing snapshot from user shell
+				`${chalk.bold("选项：")}
+  --cwd, -C <path>     设置命令的工作目录
+  --timeout, -t <ms>   每条命令的超时时间（毫秒）
+  --no-snapshot        跳过从用户 shell 加载快照
 
 ` +
-				`${chalk.bold("Notes:")}
-  Runs in a persistent brush-core shell session.
-  Variables and functions defined in one command persist for the next.
+				`${chalk.bold("说明：")}
+  在持久的 brush-core shell 会话中运行。
+  一条命令中定义的变量和函数会在后续命令中保留。
 
 `,
 		);
@@ -95,7 +95,7 @@ export async function runShellCommand(cmd: ShellCommandArgs): Promise<void> {
 	};
 
 	process.on("SIGINT", interruptHandler);
-	process.stdout.write(chalk.dim("Type .help for commands.\n"));
+	process.stdout.write(chalk.dim("输入 .help 查看可用命令。\n"));
 
 	try {
 		while (true) {
@@ -137,15 +137,15 @@ export async function runShellCommand(cmd: ShellCommandArgs): Promise<void> {
 				}
 
 				if (result.timedOut) {
-					process.stderr.write(chalk.yellow("Command timed out.\n"));
+					process.stderr.write(chalk.yellow("命令超时。\n"));
 				} else if (result.cancelled) {
-					process.stderr.write(chalk.yellow("Command cancelled.\n"));
+					process.stderr.write(chalk.yellow("命令已取消。\n"));
 				} else if (result.exitCode !== 0 && result.exitCode !== undefined) {
-					process.stderr.write(chalk.yellow(`Exit code: ${result.exitCode}\n`));
+					process.stderr.write(chalk.yellow(`退出码：${result.exitCode}\n`));
 				}
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				process.stderr.write(chalk.red(`Error: ${message}\n`));
+				process.stderr.write(chalk.red(`错误：${message}\n`));
 			} finally {
 				active = false;
 			}
@@ -157,18 +157,18 @@ export async function runShellCommand(cmd: ShellCommandArgs): Promise<void> {
 }
 
 export function printShellHelp(): void {
-	process.stdout.write(`${chalk.bold(`${APP_NAME} shell`)} - Interactive shell console for testing
+	process.stdout.write(`${chalk.bold(`${APP_NAME} shell`)} - 用于测试的交互式 shell 控制台
 
-${chalk.bold("Usage:")}
+${chalk.bold("用法：")}
   ${APP_NAME} shell [options]
 
-${chalk.bold("Options:")}
-  --cwd, -C <path>     Set working directory for commands
-  --timeout, -t <ms>   Timeout per command in milliseconds
-  --no-snapshot        Skip sourcing snapshot from user shell
-  -h, --help           Show this help
+${chalk.bold("选项：")}
+  --cwd, -C <path>     设置命令的工作目录
+  --timeout, -t <ms>   每条命令的超时时间（毫秒）
+  --no-snapshot        跳过从用户 shell 加载快照
+  -h, --help           显示此帮助
 
-${chalk.bold("Examples:")}
+${chalk.bold("示例：")}
   ${APP_NAME} shell
   ${APP_NAME} shell --cwd ./tmp
   ${APP_NAME} shell --timeout 2000

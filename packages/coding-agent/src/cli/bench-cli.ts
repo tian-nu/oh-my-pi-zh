@@ -268,7 +268,7 @@ function getErrorMessage(error: unknown): string {
 function normalizePositiveInteger(name: string, value: number | undefined, fallback: number): number {
 	if (value === undefined) return fallback;
 	if (!Number.isInteger(value) || value <= 0) {
-		throw new Error(`Expected --${name} to be a positive integer, got ${value}`);
+		throw new Error(`--${name} 应为正整数，实际为 ${value}`);
 	}
 	return value;
 }
@@ -433,7 +433,7 @@ function renderCacheBenchmarkPrefix(prefix: string, namespace: string): string {
 		namespace,
 	});
 	if (!rendered.includes(CACHE_PREFIX_PLACEHOLDER)) {
-		throw new Error("Cache benchmark prefix template is missing its raw prefix placeholder");
+		throw new Error("缓存基准测试前缀模板缺少原始前缀占位符");
 	}
 	// Render the static wrapper first, then inject caller bytes so prompt
 	// normalization cannot trim spaces or collapse blank lines in prefix files.
@@ -540,12 +540,12 @@ function formatCost(cost: number): string {
 function formatCachePairLine(pair: BenchCachePairReport, index: number, total: number): string {
 	const formatPhase = (run: BenchCacheRunReport, alreadyWarm = false) => {
 		if (!run.result.ok) {
-			return `${run.phase} failed: ${truncateToWidth(replaceTabs(run.result.error), ERROR_WIDTH)}`;
+			return `${run.phase} 失败: ${truncateToWidth(replaceTabs(run.result.error), ERROR_WIDTH)}`;
 		}
 		const usage = run.usage;
-		return `${run.phase}${alreadyWarm ? " (already warm)" : ""} ${run.observations.join(", ")} ${chalk.dim("input")} ${usage?.inputTokens ?? 0} ${chalk.dim("cache-read")} ${usage?.cacheReadTokens ?? 0} ${chalk.dim("cache-write")} ${usage?.cacheWriteTokens ?? 0} ${chalk.dim("output")} ${usage?.outputTokens ?? run.result.outputTokens} ${chalk.dim("total")} ${usage?.totalTokens ?? 0} ${chalk.dim("cost")} ${formatCost(usage?.cost ?? 0)} ${chalk.dim("TTFT")} ${formatMs(run.result.ttftMs)} ${chalk.dim("duration")} ${formatMs(run.result.durationMs)} ${chalk.dim("throughput")} ${run.result.tokensPerSecond.toFixed(1)}/s`;
+		return `${run.phase}${alreadyWarm ? "（已预热）" : ""} ${run.observations.join(", ")} ${chalk.dim("输入")} ${usage?.inputTokens ?? 0} ${chalk.dim("缓存读")} ${usage?.cacheReadTokens ?? 0} ${chalk.dim("缓存写")} ${usage?.cacheWriteTokens ?? 0} ${chalk.dim("输出")} ${usage?.outputTokens ?? run.result.outputTokens} ${chalk.dim("总计")} ${usage?.totalTokens ?? 0} ${chalk.dim("成本")} ${formatCost(usage?.cost ?? 0)} ${chalk.dim("TTFT")} ${formatMs(run.result.ttftMs)} ${chalk.dim("耗时")} ${formatMs(run.result.durationMs)} ${chalk.dim("吞吐")} ${run.result.tokensPerSecond.toFixed(1)}/s`;
 	};
-	return `  ${chalk.dim(`pair ${index + 1}/${total}`)} ${formatPhase(pair.cold, pair.coldAlreadyWarm)}; ${formatPhase(pair.warm)}`;
+	return `  ${chalk.dim(`第 ${index + 1}/${total} 对`)} ${formatPhase(pair.cold, pair.coldAlreadyWarm)}; ${formatPhase(pair.warm)}`;
 }
 
 interface BenchRequestOptions {
@@ -622,7 +622,7 @@ async function runBenchRequest(
 				firstTokenAt = now();
 			}
 			if (event.type === "error") {
-				return { ok: false, error: event.error.errorMessage ?? "request failed" };
+				return { ok: false, error: event.error.errorMessage ?? "请求失败" };
 			}
 			if (event.type === "done") {
 				message = event.message;
@@ -630,7 +630,7 @@ async function runBenchRequest(
 		}
 		message ??= await stream.result();
 		if (message.stopReason === "error" || message.errorMessage) {
-			return { ok: false, error: message.errorMessage ?? "request failed" };
+			return { ok: false, error: message.errorMessage ?? "请求失败" };
 		}
 		const rawDuration = message.duration ?? now() - startedAt;
 		const durationMs = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 0;
@@ -646,7 +646,7 @@ async function runBenchRequest(
 		if (firstTokenAt === undefined && outputTokens === 0 && !hasVisibleFinalContent(message)) {
 			return {
 				ok: false,
-				error: `provider returned no output (0 tokens, empty stream; stop reason: ${message.stopReason ?? "unknown"})`,
+				error: `提供商未返回任何输出（0 token，空流；停止原因: ${message.stopReason ?? "unknown"}）`,
 			};
 		}
 		if (options.cacheCapture) options.cacheCapture.usage = captureUsage(message);
@@ -725,11 +725,11 @@ function formatMs(ms: number): string {
 }
 
 function formatRunLine(result: BenchRunResult, index: number, total: number): string {
-	const prefix = chalk.dim(`run ${index + 1}/${total}`);
+	const prefix = chalk.dim(`第 ${index + 1}/${total} 次运行`);
 	const kind = result.challenge ? `${chalk.cyan(result.challenge.padEnd(10))} ` : "";
 	if (result.ok) {
 		const gen = result.generationTps > 0 ? `${result.generationTps.toFixed(1)}/s` : "-";
-		return `  ${chalk.green("✓")} ${prefix} ${kind}${chalk.dim("TTFT")} ${formatMs(result.ttftMs)} ${chalk.dim("tok/s")} ${result.tokensPerSecond.toFixed(1)} ${chalk.dim("gen")} ${gen} ${chalk.dim("in")} ${formatNumber(result.inputTokens)} ${chalk.dim("out")} ${formatNumber(result.outputTokens)} ${chalk.dim("total")} ${formatMs(result.durationMs)}`;
+		return `  ${chalk.green("✓")} ${prefix} ${kind}${chalk.dim("TTFT")} ${formatMs(result.ttftMs)} ${chalk.dim("tok/s")} ${result.tokensPerSecond.toFixed(1)} ${chalk.dim("生成")} ${gen} ${chalk.dim("输入")} ${formatNumber(result.inputTokens)} ${chalk.dim("输出")} ${formatNumber(result.outputTokens)} ${chalk.dim("总计")} ${formatMs(result.durationMs)}`;
 	}
 	return `  ${chalk.red("✗")} ${prefix} ${kind}${chalk.red(truncateToWidth(replaceTabs(result.error).replace(/\r?\n/g, " "), ERROR_WIDTH))}`;
 }
@@ -748,9 +748,9 @@ interface BenchLiveProgress {
 
 function renderBenchProgress(progress: BenchLiveProgress | undefined, spinner: string): string[] {
 	if (!progress || progress.completed >= progress.total) return [];
-	const parts = [`${progress.completed}/${progress.total} ${progress.unit}`];
-	if (progress.inFlight > 0) parts.push(`${progress.inFlight} in flight`);
-	if (progress.failed > 0) parts.push(chalk.red(`${progress.failed} failed`));
+	const parts = [`${progress.completed}/${progress.total} ${progress.unit === "pairs" ? "对" : "次"}`];
+	if (progress.inFlight > 0) parts.push(`${progress.inFlight} 个进行中`);
+	if (progress.failed > 0) parts.push(chalk.red(`${progress.failed} 个失败`));
 	if (progress.okCount > 0) {
 		parts.push(`TTFT ~${formatMs(progress.ttftSumMs / progress.okCount)}`);
 		parts.push(`~${(progress.tpsSum / progress.okCount).toFixed(1)} tok/s`);
@@ -772,7 +772,7 @@ function benchTableColumns(models: BenchModelReport[]): BenchTableColumn[] {
 	const ttft = (report: BenchModelReport): MetricStats | undefined =>
 		(report.byChallenge.chat ?? report.stats ?? undefined)?.ttftMs;
 	const columns: BenchTableColumn[] = [
-		{ header: "model", value: formatBenchModelLabel },
+		{ header: "模型", value: formatBenchModelLabel },
 		{ header: "TTFT p50", value: r => (ttft(r) ? formatMs(ttft(r)!.p50) : "-") },
 		{ header: "p95", value: r => (ttft(r) ? formatMs(ttft(r)!.p95) : "-") },
 	];
@@ -784,17 +784,17 @@ function benchTableColumns(models: BenchModelReport[]): BenchTableColumn[] {
 	}
 	if (has("generation")) {
 		columns.push({
-			header: "decode",
+			header: "解码",
 			value: r => (r.byChallenge.generation ? r.byChallenge.generation.tokensPerSecond.p50.toFixed(1) : "-"),
 		});
 	}
 	if (has("prefill")) {
 		columns.push({
-			header: "prefill",
+			header: "预填充",
 			value: r => (r.byChallenge.prefill ? r.byChallenge.prefill.prefillTps.p50.toFixed(0) : "-"),
 		});
 	}
-	columns.push({ header: "cost/run", value: r => (r.stats && r.stats.cost > 0 ? formatCost(r.stats.cost) : "-") });
+	columns.push({ header: "成本/次", value: r => (r.stats && r.stats.cost > 0 ? formatCost(r.stats.cost) : "-") });
 	return columns;
 }
 
@@ -836,7 +836,7 @@ export function formatBenchTable(summary: BenchSummary): string {
 			cells[0] = chalk.green(cells[0]!);
 			winnerMarked = true;
 		}
-		const failedSuffix = row.failed > 0 ? `  ${chalk.red(`(${row.failed} failed)`)}` : "";
+		const failedSuffix = row.failed > 0 ? `  ${chalk.red(`(${row.failed} 个失败)`)}` : "";
 		lines.push(cells.join("  ").trimEnd() + failedSuffix);
 	}
 	return `${lines.join("\n")}\n`;
@@ -845,7 +845,7 @@ export function formatBenchTable(summary: BenchSummary): string {
 function assertCacheModeSupported(targets: BenchTarget[]): void {
 	if (targets.some(({ model }) => model.api === "openai-codex-responses")) {
 		throw new Error(
-			"--cache is not supported for openai-codex-responses because Codex WebSocket chaining cannot produce independent prompt-cache pairs",
+			"--cache 不支持 openai-codex-responses，因为 Codex WebSocket 链式调用无法生成独立的提示缓存对",
 		);
 	}
 }
@@ -857,13 +857,13 @@ export async function runBenchCommand(command: BenchCommandArgs, deps: BenchDepe
 		command.flags.cachePrefixBytes !== undefined ||
 		command.flags.cachePairs !== undefined ||
 		command.flags.cacheConcurrency !== undefined;
-	if (!cacheMode && cacheFlagsUsed) throw new Error("Cache flags require --cache");
+	if (!cacheMode && cacheFlagsUsed) throw new Error("缓存相关 flag 需要配合 --cache 使用");
 	if (cacheMode && command.flags.runs !== undefined)
-		throw new Error("Use --cache-pairs instead of --runs with --cache");
-	if (cacheMode && command.flags.prompt !== undefined) throw new Error("--cache builds its own stable-prefix prompts");
-	if (cacheMode && command.flags.profile !== undefined) throw new Error("--profile cannot be combined with --cache");
+		throw new Error("使用 --cache 时请用 --cache-pairs 代替 --runs");
+	if (cacheMode && command.flags.prompt !== undefined) throw new Error("--cache 会自行构建稳定前缀 prompt");
+	if (cacheMode && command.flags.profile !== undefined) throw new Error("--profile 不能与 --cache 同时使用");
 	if (cacheMode && (command.flags.par ?? 1) > 1) {
-		throw new Error("--par cannot parallelize cold/warm pairs; use --cache-concurrency instead");
+		throw new Error("--par 无法并行化冷/热配对；请改用 --cache-concurrency");
 	}
 	const profileFlag = command.flags.profile;
 	if (
@@ -873,14 +873,14 @@ export async function runBenchCommand(command: BenchCommandArgs, deps: BenchDepe
 		profileFlag !== "prefill" &&
 		profileFlag !== "generation"
 	) {
-		throw new Error(`Unknown --profile "${profileFlag}" (expected mix, chat, prefill, or generation)`);
+		throw new Error(`未知的 --profile "${profileFlag}"（应为 mix、chat、prefill 或 generation）`);
 	}
 	const profile: BenchProfile = profileFlag ?? "mix";
 	if (!cacheMode && command.flags.prompt !== undefined && profile !== "chat" && profile !== "generation") {
-		throw new Error("--prompt requires --profile chat or generation");
+		throw new Error("--prompt 需要配合 --profile chat 或 generation 使用");
 	}
 	if (command.flags.prefillBytes !== undefined && (cacheMode || (profile !== "mix" && profile !== "prefill"))) {
-		throw new Error("--prefill-bytes requires prefill challenges (--profile mix or prefill)");
+		throw new Error("--prefill-bytes 需要 prefill 挑战（--profile mix 或 prefill）");
 	}
 
 	const cachePairs = cacheMode
@@ -918,7 +918,7 @@ export async function runBenchCommand(command: BenchCommandArgs, deps: BenchDepe
 	const now = deps.now ?? (() => performance.now());
 	const interactive = deps.stdoutIsTTY ?? process.stdout.isTTY === true;
 	if (command.models.length === 0) {
-		throw new Error("Pass at least one model selector, e.g. `omp bench opus gpt-5.2`");
+		throw new Error("请至少传入一个模型选择器，例如 `omp bench opus gpt-5.2`");
 	}
 	let progress: BenchLiveProgress | undefined;
 	const board = json
@@ -956,7 +956,7 @@ export async function runBenchCommand(command: BenchCommandArgs, deps: BenchDepe
 					runtime.settings?.get("tier.anthropic") ?? "none",
 					runtime.settings?.get("tier.google") ?? "none",
 				);
-		if (!json && flagTier) print(chalk.dim(`service tier: ${flagTier}`));
+		if (!json && flagTier) print(chalk.dim(`服务层级: ${flagTier}`));
 		const reports: BenchModelReport[] = [];
 		for (const { selector, model, thinking } of targets) {
 			if (!json) {
@@ -986,7 +986,7 @@ export async function runBenchCommand(command: BenchCommandArgs, deps: BenchDepe
 			if (!preflightKey) {
 				const failure: BenchRunFailure = {
 					ok: false,
-					error: `No credentials for provider "${model.provider}". Run \`omp\` and use /login, or set the provider API key.`,
+					error: `提供商 "${model.provider}" 没有可用凭据。请运行 \`omp\` 并使用 /login，或设置该提供商的 API 密钥。`,
 				};
 				results.push(failure);
 				if (!json) print(formatRunLine(failure, 0, runs));

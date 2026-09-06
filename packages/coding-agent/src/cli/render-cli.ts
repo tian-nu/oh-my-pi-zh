@@ -141,16 +141,16 @@ async function resolveTargetSession(sessionArg: string | undefined, cwd: string)
 				await fs.access(resolved);
 				return resolved;
 			} catch (err) {
-				if (isEnoent(err)) throw new Error(`Session file not found: ${resolved}`);
+				if (isEnoent(err)) throw new Error(`未找到会话文件: ${resolved}`);
 				throw err;
 			}
 		}
 		const match = await resolveResumableSession(sessionArg, cwd);
-		if (!match) throw new Error(`Session "${sessionArg}" not found.`);
+		if (!match) throw new Error(`未找到会话 "${sessionArg}"。`);
 		return match.session.path;
 	}
 	const recent = await findMostRecentSession(SessionManager.getDefaultSessionDir(cwd));
-	if (!recent) throw new Error(`No sessions found for ${cwd}. Pass a session file or id.`);
+	if (!recent) throw new Error(`在 ${cwd} 下未找到会话。请传入会话文件或 id。`);
 	return recent;
 }
 
@@ -195,7 +195,7 @@ export async function runRenderCommand(args: RenderCommandArgs): Promise<number>
 		const authStorage = new AuthStorage(new SqliteAuthCredentialStore(new Database(":memory:")));
 		const modelRegistry = new ModelRegistry(authStorage);
 		const model = modelRegistry.getAll()[0];
-		if (!model) throw new Error("No models available in the bundled catalog");
+		if (!model) throw new Error("内置模型目录中没有可用模型");
 
 		session = new AgentSession({
 			agent: new Agent({ initialState: { model, systemPrompt: [], tools: [], messages: [] } }),
@@ -252,10 +252,10 @@ export async function runRenderCommand(args: RenderCommandArgs): Promise<number>
 			const rows = mode.chatContainer.render(width).length;
 			const report = [
 				`session  ${sourcePath}`,
-				`         ${formatBytes(sourceSize)}, ${entries.length} entries, ${messageCount} messages, ${rows} transcript rows @ ${width}x${height}`,
+				`         ${formatBytes(sourceSize)}, ${entries.length} 个条目, ${messageCount} 条消息, ${rows} 行转录 @ ${width}x${height}`,
 				`open     ${formatMs(openMs)}`,
-				`replay   ${formatMs(replayMs)}  (transcript build + component construction)`,
-				`paint    ${formatMs(paintMs)}  (full frame compose + emit: ${formatBytes(paintBytes)}, ${terminal.writes} writes)`,
+				`replay   ${formatMs(replayMs)}  (构建转录 + 组件构造)`,
+				`paint    ${formatMs(paintMs)}  (完整帧合成 + 输出: ${formatBytes(paintBytes)}, ${terminal.writes} 次写入)`,
 			];
 			if (repaints.length > 0) {
 				const times = repaints.map(r => r.ms);
@@ -264,7 +264,7 @@ export async function runRenderCommand(args: RenderCommandArgs): Promise<number>
 				const max = Math.max(...times);
 				const bytesPer = repaints[0]!.bytes;
 				report.push(
-					`repaint  ${formatMs(avg)} avg over ${repaints.length} (min ${formatMs(min)}, max ${formatMs(max)}), ${formatBytes(bytesPer)}/frame`,
+					`repaint  ${formatMs(avg)} 平均，共 ${repaints.length} 次 (最小 ${formatMs(min)}, 最大 ${formatMs(max)}), ${formatBytes(bytesPer)}/帧`,
 				);
 			}
 			process.stderr.write(`${report.join("\n")}\n`);

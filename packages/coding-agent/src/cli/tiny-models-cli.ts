@@ -60,7 +60,7 @@ export function resolveModels(model: string | undefined, mlx = tinyWorkerUsesMlx
 		).map(spec => spec.key);
 	if (!isTinyLocalModelKey(model)) {
 		const values = TINY_LOCAL_MODELS.map(spec => spec.key).join(", ");
-		throw new Error(`Unknown tiny local model: ${model}. Expected one of: ${values}, all`);
+		throw new Error(`未知的 tiny 本地模型：${model}。可选值：${values}, all`);
 	}
 	return [model];
 }
@@ -70,9 +70,9 @@ function listModels(json: boolean | undefined): void {
 		writeLine(JSON.stringify({ models: TINY_LOCAL_MODELS }));
 		return;
 	}
-	writeLine(chalk.bold("Tiny local models"));
+	writeLine(chalk.bold("Tiny 本地模型"));
 	for (const spec of TINY_LOCAL_MODELS) {
-		const defaultMark = spec.key === DEFAULT_TINY_TITLE_LOCAL_MODEL_KEY ? chalk.cyan(" default") : "";
+		const defaultMark = spec.key === DEFAULT_TINY_TITLE_LOCAL_MODEL_KEY ? chalk.cyan("（默认）") : "";
 		writeLine(`${chalk.cyan(spec.key)}${defaultMark}`);
 		writeLine(`  ${spec.label} — ${spec.description}`);
 	}
@@ -96,7 +96,7 @@ function makeProgressReporter(modelKey: TinyLocalModelKey, json: boolean | undef
 		const pct = progress >= 0 ? `${Math.floor(progress).toString().padStart(3, " ")}%` : " --%";
 		const bytes = event.loaded && event.total ? ` ${formatBytes(event.loaded)}/${formatBytes(event.total)}` : "";
 		const file = event.file ? ` ${event.file.split("/").at(-1) ?? event.file}` : "";
-		const statusLabel = event.status === "ready" ? "Ready" : "Downloading";
+		const statusLabel = event.status === "ready" ? "就绪" : "下载中";
 		const line = `${chalk.cyan(statusLabel)} ${label} [${bar}] ${pct}${bytes}${file}`;
 		process.stdout.write(`\r${line.padEnd(lastWidth)}`);
 		lastWidth = line.length;
@@ -107,7 +107,7 @@ function makeProgressReporter(modelKey: TinyLocalModelKey, json: boolean | undef
 			render(event);
 		},
 		finish(ok) {
-			const suffix = ok ? chalk.green("done") : chalk.red("failed");
+			const suffix = ok ? chalk.green("完成") : chalk.red("失败");
 			process.stdout.write(`\r${`${label}: ${suffix}`.padEnd(lastWidth)}\n`);
 		},
 	};
@@ -115,15 +115,15 @@ function makeProgressReporter(modelKey: TinyLocalModelKey, json: boolean | undef
 
 async function downloadOne(modelKey: TinyLocalModelKey, json: boolean | undefined): Promise<DownloadResult> {
 	const label = getTinyLocalModelSpec(modelKey)?.label ?? modelKey;
-	if (!json && !process.stdout.isTTY) writeLine(`Downloading ${label} (${modelKey})...`);
+	if (!json && !process.stdout.isTTY) writeLine(`正在下载 ${label} (${modelKey})...`);
 	const progress = makeProgressReporter(modelKey, json);
 	const result = await tinyTitleClient.downloadModel(modelKey, { onProgress: progress.onProgress });
 	progress.finish(result.ok);
 	const error = downloadErrorSummary(result.error);
 	if (!json && !process.stdout.isTTY) {
-		writeLine(result.ok ? `Downloaded ${label}.` : `Failed to download ${label}${error ? `: ${error}` : ""}.`);
+		writeLine(result.ok ? `已下载 ${label}。` : `下载 ${label} 失败${error ? `：${error}` : ""}。`);
 	} else if (!json && !result.ok && error) {
-		writeLine(`${label} failed: ${error}`);
+		writeLine(`${label} 下载失败：${error}`);
 	}
 	return result.error ? { model: modelKey, ok: result.ok, error: result.error } : { model: modelKey, ok: result.ok };
 }
@@ -148,6 +148,6 @@ export async function runTinyModelsCommand(command: TinyModelsCommandArgs): Prom
 		writeLine(JSON.stringify({ results }));
 	}
 	if (results.some(result => !result.ok)) {
-		throw new Error("One or more tiny title models failed to download");
+		throw new Error("一个或多个 tiny title 模型下载失败");
 	}
 }

@@ -152,13 +152,13 @@ function getReservedAliasNames(shell: ProfileAliasShell): ReadonlySet<string> {
 function validateAliasName(aliasName: string, shell: ProfileAliasShell): string {
 	const normalized = aliasName.trim();
 	if (!ALIAS_NAME_RE.test(normalized)) {
-		throw new Error(`Invalid alias "${aliasName}". Alias names must match ${ALIAS_NAME_RE.source}.`);
+		throw new Error(`无效的别名 "${aliasName}"。别名必须匹配 ${ALIAS_NAME_RE.source}。`);
 	}
 	if (normalized.toLowerCase() === "omp") {
-		throw new Error('Invalid alias "omp". Refusing to shadow the base omp command.');
+		throw new Error('无效的别名 "omp"。拒绝覆盖基础 omp 命令。');
 	}
 	if (getReservedAliasNames(shell).has(normalized.toLowerCase())) {
-		throw new Error(`Invalid alias "${aliasName}". Refusing to create a ${shell} reserved word.`);
+		throw new Error(`无效的别名 "${aliasName}"。它是 ${shell} 的保留字，无法创建。`);
 	}
 	return normalized;
 }
@@ -193,7 +193,7 @@ function normalizeShellName(
 	if (shell === "pwsh") return "pwsh";
 	if (shell === "powershell") return "powershell";
 	if (platform === "win32") return detectWindowsPowerShell(env);
-	throw new Error(`Unsupported shell${shell ? ` "${shell}"` : ""}. Supported shells: bash, zsh, fish, PowerShell.`);
+	throw new Error(`不支持的 shell${shell ? ` "${shell}"` : ""}。支持的 shell: bash, zsh, fish, PowerShell。`);
 }
 
 /** Resolve the command a generated profile alias should invoke. */
@@ -313,8 +313,8 @@ function upsertBlock(content: string, aliasName: string, block: string): string 
 		const endIndex = content.indexOf(end, startIndex + start.length);
 		if (endIndex === -1) {
 			throw new Error(
-				`Found "${start}" without a matching "${end}" in the shell config. ` +
-					`The managed alias block is malformed; remove the stale marker line and rerun --alias.`,
+				`在 shell 配置中找到了 "${start}"，但没有匹配的 "${end}"。` +
+					`受管理的别名块已损坏；请删除过期的标记行后重新运行 --alias。`,
 			);
 		}
 		const afterEnd = endIndex + end.length;
@@ -345,7 +345,7 @@ export async function readProfileAliasConfigFile(
 export async function installProfileAlias(options: ProfileAliasInstallOptions): Promise<ProfileAliasInstallResult> {
 	const profile = normalizeProfileName(options.profile);
 	if (!profile) {
-		throw new Error("--alias requires a named --profile value.");
+		throw new Error("--alias 需要一个具名的 --profile 值。");
 	}
 	const platform = options.platform ?? process.platform;
 	const homeDir = options.homeDir ?? os.homedir();

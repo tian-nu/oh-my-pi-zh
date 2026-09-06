@@ -6,7 +6,7 @@ const APP_NAME = "omp";
 
 export async function initXdg(): Promise<void> {
 	if (process.platform !== "linux" && process.platform !== "darwin") {
-		console.error("XDG directory setup is only supported on Linux and macOS.");
+		console.error("XDG 目录初始化仅支持 Linux 和 macOS。");
 		process.exit(1);
 	}
 
@@ -18,10 +18,10 @@ export async function initXdg(): Promise<void> {
 
 	for (const dir of dirs) {
 		await fs.mkdir(dir, { recursive: true });
-		console.log(`Created ${dir.replace(os.homedir(), "~")}`);
+		console.log(`已创建 ${dir.replace(os.homedir(), "~")}`);
 	}
 
-	console.log("\nXDG directories initialized.");
-	console.log("Ensure XDG_DATA_HOME, XDG_STATE_HOME, and XDG_CACHE_HOME");
-	console.log("are set in your shell profile for omp to use them.");
+	console.log("\nXDG 目录已初始化。");
+	console.log("请确保在你的 shell 配置文件中设置 XDG_DATA_HOME、XDG_STATE_HOME 和 XDG_CACHE_HOME，");
+	console.log("以便 omp 使用这些目录。");
 }

@@ -7,25 +7,25 @@ export const BUILTIN_CONTROL_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "force",
 		icon: "hammer",
-		description: "Force next turn to use a specific tool",
+		description: "强制下一轮使用指定工具",
 		aliases: ["force:"],
 		inlineHint: "<tool-name> [prompt]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
 			const count = runtime.ctx.session.getActiveToolNames().length;
-			return count === 0 ? "Force: no active tools" : `Force: ${count} active tools`;
+			return count === 0 ? "强制：当前无可用工具" : `强制：${count} 个可用工具`;
 		},
 		handle: async (command, runtime) => {
 			const spaceIdx = command.args.indexOf(" ");
 			const toolName = spaceIdx === -1 ? command.args : command.args.slice(0, spaceIdx);
 			const prompt = spaceIdx === -1 ? "" : command.args.slice(spaceIdx + 1).trim();
-			if (!toolName) return usage("Usage: /force:<tool-name> [prompt]", runtime);
+			if (!toolName) return usage("用法：/force:<tool-name> [prompt]", runtime);
 			try {
 				runtime.session.setForcedToolChoice(toolName);
 			} catch (err) {
 				return usage(errorMessage(err), runtime);
 			}
-			await runtime.output(`Next turn forced to use ${toolName}.`);
+			await runtime.output(`下一轮将强制使用 ${toolName}。`);
 			return prompt ? { prompt } : commandConsumed();
 		},
 		handleTui: (command, runtime) => {
@@ -34,14 +34,14 @@ export const BUILTIN_CONTROL_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 			const prompt = spaceIdx === -1 ? "" : command.args.slice(spaceIdx + 1).trim();
 
 			if (!toolName) {
-				runtime.ctx.showError("Usage: /force:<tool-name> [prompt]");
+				runtime.ctx.showError("用法：/force:<tool-name> [prompt]");
 				runtime.ctx.editor.setText("");
 				return;
 			}
 
 			try {
 				runtime.ctx.session.setForcedToolChoice(toolName);
-				runtime.ctx.showStatus(`Next turn forced to use ${toolName}.`);
+				runtime.ctx.showStatus(`下一轮将强制使用 ${toolName}。`);
 			} catch (error) {
 				runtime.ctx.showError(errorMessage(error));
 				runtime.ctx.editor.setText("");
@@ -57,7 +57,7 @@ export const BUILTIN_CONTROL_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "live",
 		icon: "voice",
-		description: "Start Codex-backed realtime voice mode",
+		description: "启动基于 Codex 的实时语音模式",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runtime.ctx.handleLiveCommand();
@@ -66,7 +66,7 @@ export const BUILTIN_CONTROL_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "pause",
 		icon: "pause",
-		description: "Freeze all agents (main, subagents, advisor) until resumed",
+		description: "冻结所有 agent（主 agent、子 agent、advisor）直至恢复",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runPauseScreen(runtime.ctx);
@@ -76,7 +76,7 @@ export const BUILTIN_CONTROL_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 		name: "quit",
 		aliases: ["q"],
 		icon: "power",
-		description: "Quit the application",
+		description: "退出应用程序",
 		handleTui: shutdownHandlerTui,
 	},
 ];

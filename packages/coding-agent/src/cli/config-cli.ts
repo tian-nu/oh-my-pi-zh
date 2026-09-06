@@ -95,8 +95,8 @@ export function parseConfigArgs(args: string[]): ConfigCommandArgs | undefined {
 
 	const action = args[1];
 	if (!VALID_ACTIONS.includes(action as ConfigAction)) {
-		console.error(chalk.red(`Unknown config command: ${action}`));
-		console.error(`Valid commands: ${VALID_ACTIONS.join(", ")}`);
+		console.error(chalk.red(`未知的 config 命令: ${action}`));
+		console.error(`有效命令: ${VALID_ACTIONS.join(", ")}`);
 		process.exit(1);
 	}
 
@@ -131,7 +131,7 @@ export function parseConfigArgs(args: string[]): ConfigCommandArgs | undefined {
 
 function formatValue(value: unknown): string {
 	if (value === undefined || value === null) {
-		return chalk.dim("(not set)");
+		return chalk.dim("（未设置）");
 	}
 	if (typeof value === "boolean") {
 		return value ? chalk.green("true") : chalk.red("false");
@@ -302,7 +302,7 @@ async function handleList(flags: { json?: boolean }): Promise<void> {
 		return;
 	}
 
-	console.log(chalk.bold("Settings:\n"));
+	console.log(chalk.bold("设置项：\n"));
 
 	const groups: Record<string, CliSettingDef[]> = {};
 	for (const def of defs) {
@@ -337,15 +337,15 @@ async function handleList(flags: { json?: boolean }): Promise<void> {
 
 function handleGet(key: string | undefined, flags: { json?: boolean }): void {
 	if (!key) {
-		console.error(chalk.red(`Usage: ${APP_NAME} config get <key>`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`用法: ${APP_NAME} config get <key>`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
 	const def = findSettingDef(key);
 	if (!def) {
-		console.error(chalk.red(`Unknown setting: ${key}`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`未知的设置项: ${key}`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
@@ -361,15 +361,15 @@ function handleGet(key: string | undefined, flags: { json?: boolean }): void {
 
 async function handleSet(key: string | undefined, value: string | undefined, flags: { json?: boolean }): Promise<void> {
 	if (!key || value === undefined) {
-		console.error(chalk.red(`Usage: ${APP_NAME} config set <key> <value>`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`用法: ${APP_NAME} config set <key> <value>`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
 	const def = findSettingDef(key);
 	if (!def) {
-		console.error(chalk.red(`Unknown setting: ${key}`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`未知的设置项: ${key}`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
@@ -386,21 +386,21 @@ async function handleSet(key: string | undefined, value: string | undefined, fla
 	if (flags.json) {
 		console.log(JSON.stringify({ key: def.path, value: newValue }));
 	} else {
-		console.log(chalk.green(`${theme.status.success} Set ${def.path} = ${formatValue(newValue)}`));
+		console.log(chalk.green(`${theme.status.success} 已设置 ${def.path} = ${formatValue(newValue)}`));
 	}
 }
 
 async function handleReset(key: string | undefined, flags: { json?: boolean }): Promise<void> {
 	if (!key) {
-		console.error(chalk.red(`Usage: ${APP_NAME} config reset <key>`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`用法: ${APP_NAME} config reset <key>`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
 	const def = findSettingDef(key);
 	if (!def) {
-		console.error(chalk.red(`Unknown setting: ${key}`));
-		console.error(chalk.dim(`\nRun '${APP_NAME} config list' to see available keys`));
+		console.error(chalk.red(`未知的设置项: ${key}`));
+		console.error(chalk.dim(`\n运行 '${APP_NAME} config list' 查看可用的键`));
 		process.exit(1);
 	}
 
@@ -417,7 +417,7 @@ async function handleReset(key: string | undefined, flags: { json?: boolean }): 
 	if (flags.json) {
 		console.log(JSON.stringify({ key: def.path, value: defaultValue }));
 	} else {
-		console.log(chalk.green(`${theme.status.success} Reset ${def.path} to ${formatValue(defaultValue)}`));
+		console.log(chalk.green(`${theme.status.success} 已将 ${def.path} 重置为 ${formatValue(defaultValue)}`));
 	}
 }
 
@@ -430,20 +430,20 @@ function handlePath(): void {
 // =============================================================================
 
 export function printConfigHelp(): void {
-	console.log(`${chalk.bold(`${APP_NAME} config`)} - Manage settings
+	console.log(`${chalk.bold(`${APP_NAME} config`)} - 管理设置项
 
-${chalk.bold("Commands:")}
-  list               List all settings with current values
-  get <key>          Get a specific setting value
-  set <key> <value>  Set a setting value
-  reset <key>        Reset a setting to its default value
-  path               Print the config directory path
-  init-xdg           Initialize XDG Base Directory structure
+${chalk.bold("命令：")}
+  list               列出所有设置项及其当前值
+  get <key>          获取指定设置项的值
+  set <key> <value>  设置某个设置项的值
+  reset <key>        将设置项重置为默认值
+  path               打印配置目录路径
+  init-xdg           初始化 XDG Base Directory 目录结构
 
-${chalk.bold("Options:")}
-  --json             Output as JSON
+${chalk.bold("选项：")}
+  --json             以 JSON 格式输出
 
-${chalk.bold("Examples:")}
+${chalk.bold("示例：")}
   ${APP_NAME} config list
   ${APP_NAME} config get theme
   ${APP_NAME} config set theme catppuccin-mocha
@@ -453,7 +453,7 @@ ${chalk.bold("Examples:")}
   ${APP_NAME} config list --json
   ${APP_NAME} config init-xdg
 
-${chalk.bold("Boolean Values:")}
+${chalk.bold("布尔值：")}
   true, false, yes, no, on, off, 1, 0
 `);
 }

@@ -167,13 +167,13 @@ async function readSnippet(opts: { snippet?: string; file?: string }): Promise<s
 		const resolved = path.resolve(opts.file);
 		const file = Bun.file(resolved);
 		if (!(await file.exists())) {
-			throw new Error(`Snippet file not found: ${resolved}`);
+			throw new Error(`未找到代码片段文件：${resolved}`);
 		}
 		return await file.text();
 	}
 	if (opts.snippet !== undefined) return opts.snippet;
 	if (process.stdin.isTTY === false) return await Bun.stdin.text();
-	throw new Error("No snippet provided. Pass inline text, --file <path>, or pipe via --file -.");
+	throw new Error("未提供代码片段。请传入内联文本、--file <path>，或通过 --file - 管道输入。");
 }
 
 function previewSnippet(text: string): string {
@@ -255,7 +255,7 @@ async function evaluate(
 			agents: rule.agents,
 		};
 		if (!astEligible && (rule.astCondition ?? []).length > 0) {
-			detail.skippedAst = "astCondition requires --source tool and a --path with a file extension";
+			detail.skippedAst = "astCondition 需要 --source tool 以及带文件扩展名的 --path";
 		}
 		(hitNames.has(rule.name) ? triggered : notTriggered).push(detail);
 	}
@@ -316,7 +316,7 @@ async function readIsolatedRule(rulePath: string): Promise<Rule> {
 	const resolved = path.resolve(rulePath);
 	const file = Bun.file(resolved);
 	if (!(await file.exists())) {
-		throw new Error(`Rule file not found: ${resolved}`);
+		throw new Error(`未找到规则文件：${resolved}`);
 	}
 	const content = await file.text();
 	const name = path.basename(resolved).replace(/\.(md|mdc)$/, "");
@@ -333,7 +333,7 @@ async function loadIsolatedRule(
 	if (!ruleAppliesToAgent(rule, agentName)) {
 		return {
 			ok: false,
-			unavailableMsg: `Rule "${rule.name}" is scoped to agents [${(rule.agents ?? []).join(", ")}] and does not apply to agent "${agentName}". Re-run with --agent <one of those names>.`,
+			unavailableMsg: `规则 "${rule.name}" 仅限 agents [${(rule.agents ?? []).join(", ")}]，不适用于 agent "${agentName}"。请使用 --agent <上述名称之一> 重新运行。`,
 		};
 	}
 	const manager = await createTtsrManager({
@@ -347,7 +347,7 @@ async function loadIsolatedRule(
 	});
 	if (!manager.addRule(rule)) {
 		throw new Error(
-			`Rule "${rule.name}" has no usable TTSR condition. Add a \`condition\` (regex) or \`astCondition\` (ast-grep pattern) to its frontmatter.`,
+			`规则 "${rule.name}" 没有可用的 TTSR 条件。请在其 frontmatter 中添加 \`condition\`（正则）或 \`astCondition\`（ast-grep 模式）。`,
 		);
 	}
 	return { ok: true, rules: manager.getRules(), manager };
@@ -360,7 +360,7 @@ async function loadIsolatedScanRule(rulePath: string): Promise<Rule[]> {
 
 async function runTest(args: TtsrTestArgs, json: boolean, cwd: string): Promise<void> {
 	if (args.source && !TTSR_SOURCES.includes(args.source)) {
-		throw new Error(`Invalid --source: ${args.source}. Expected one of: ${TTSR_SOURCES.join(", ")}`);
+		throw new Error(`无效的 --source：${args.source}。可选值：${TTSR_SOURCES.join(", ")}`);
 	}
 
 	const snippet = await readSnippet(args);
@@ -378,7 +378,7 @@ async function runTest(args: TtsrTestArgs, json: boolean, cwd: string): Promise<
 	// that so a false negative reads as a context mismatch, not a bad regex.
 	const inferenceNote =
 		!args.source && filePath && source === "text"
-			? `inferred --source text from '${path.extname(filePath) || filePath}' (not in the source-file extension set); pass --source tool --tool edit to evaluate tool-scoped rules`
+			? `已从 '${path.extname(filePath) || filePath}' 推断 --source text（不在源文件扩展名集合中）；如需评估 tool 作用域规则，请传入 --source tool --tool edit`
 			: undefined;
 
 	const context: TtsrMatchContext = {
@@ -405,8 +405,8 @@ async function runTest(args: TtsrTestArgs, json: boolean, cwd: string): Promise<
 
 	if (rules.length === 0) {
 		const msg = args.rule
-			? "Rule registered but produced no TTSR entry."
-			: `No TTSR rules registered for this project as agent "${agent}". Rules scoped to other agents via \`agents\` are excluded — run \`omp ttsr list\` to see every rule, or pass --agent <name>.`;
+			? "规则已注册，但未产生 TTSR 条目。"
+			: `当前项目以 agent "${agent}" 身份没有注册任何 TTSR 规则。通过 \`agents\` 限定到其他 agent 的规则已被排除——运行 \`omp ttsr list\` 可查看所有规则，或传入 --agent <name>。`;
 		if (json) {
 			process.stdout.write(`${JSON.stringify({ error: msg })}\n`);
 		} else {
@@ -442,22 +442,22 @@ function renderTestReport(report: TestReport, verbose: boolean, isolated: boolea
 	const ctxLabel = report.source === "tool" ? `tool:${report.tool ?? "?"}` : report.source;
 	const pathLabel = report.filePath ? ` path=${report.filePath}` : "";
 	process.stdout.write(
-		`${chalk.bold("TTSR test")} — source=${chalk.cyan(ctxLabel)}${pathLabel} agent=${chalk.cyan(report.agent)} snippet=${chalk.dim(`${report.snippetBytes}b`)}\n`,
+		`${chalk.bold("TTSR 测试")} — source=${chalk.cyan(ctxLabel)}${pathLabel} agent=${chalk.cyan(report.agent)} snippet=${chalk.dim(`${report.snippetBytes}b`)}\n`,
 	);
 	process.stdout.write(`${chalk.dim(`  "${report.snippetPreview}"`)}\n\n`);
 	if (report.inferenceNote) {
-		process.stdout.write(`${chalk.yellow(`note: ${report.inferenceNote}`)}\n\n`);
+		process.stdout.write(`${chalk.yellow(`注：${report.inferenceNote}`)}\n\n`);
 	}
 
 	if (report.triggered.length === 0) {
-		process.stdout.write(`${chalk.red("No rules triggered.")} (evaluated ${report.evaluated})\n`);
+		process.stdout.write(`${chalk.red("没有触发任何规则。")}（已评估 ${report.evaluated} 条）\n`);
 	} else {
-		process.stdout.write(`${chalk.green.bold(`Triggered (${report.triggered.length})`)}\n`);
+		process.stdout.write(`${chalk.green.bold(`已触发（${report.triggered.length}）`)}\n`);
 		for (const detail of report.triggered) renderRuleDetail(detail, true);
 	}
 
 	if (verbose && report.notTriggered.length > 0) {
-		process.stdout.write(`\n${chalk.dim(`Not triggered (${report.notTriggered.length})`)}\n`);
+		process.stdout.write(`\n${chalk.dim(`未触发（${report.notTriggered.length}）`)}\n`);
 		for (const detail of report.notTriggered) renderRuleDetail(detail, false);
 	}
 
@@ -485,7 +485,7 @@ function renderRuleDetail(detail: RuleMatchDetail, hit: boolean): void {
 	if (detail.skippedAst) {
 		condParts.push(chalk.dim(`astCondition: ${detail.skippedAst}`));
 	}
-	const condLabel = condParts.length > 0 ? condParts.join("  ") : chalk.dim("no active conditions");
+	const condLabel = condParts.length > 0 ? condParts.join("  ") : chalk.dim("无生效条件");
 	const provider = detail.sourceProvider ? chalk.dim(` [${detail.sourceProvider}]`) : "";
 	process.stdout.write(`  ${mark} ${chalk.bold(detail.name)}  ${condLabel}${provider}\n`);
 }
@@ -513,11 +513,11 @@ async function runList(json: boolean, cwd: string): Promise<void> {
 	}
 
 	if (rules.length === 0) {
-		process.stdout.write(`${chalk.yellow("No TTSR rules registered for this project.")}\n`);
+		process.stdout.write(`${chalk.yellow("当前项目没有注册任何 TTSR 规则。")}\n`);
 		return;
 	}
 
-	process.stdout.write(`${chalk.bold(`TTSR rules (${rules.length})`)}\n`);
+	process.stdout.write(`${chalk.bold(`TTSR 规则（${rules.length}）`)}\n`);
 	for (const rule of rules) {
 		const condParts: string[] = [];
 		if ((rule.condition ?? []).length > 0) condParts.push(`condition: ${rule.condition!.join(", ")}`);
@@ -527,7 +527,7 @@ async function runList(json: boolean, cwd: string): Promise<void> {
 		if ((rule.agents ?? []).length > 0) condParts.push(`agents: ${rule.agents!.join(", ")}`);
 		const provider = rule._source?.provider ? chalk.dim(` [${rule._source.provider}]`) : "";
 		process.stdout.write(
-			`  ${chalk.bold(rule.name)}${provider} ${chalk.dim(condParts.join("  ") || "no conditions")}\n`,
+			`  ${chalk.bold(rule.name)}${provider} ${chalk.dim(condParts.join("  ") || "无条件")}\n`,
 		);
 		if (rule.description) process.stdout.write(`${chalk.dim(`    ${rule.description}`)}\n`);
 	}
@@ -840,9 +840,9 @@ async function runScan(args: TtsrScanArgs, json: boolean, cwd: string): Promise<
 	const scanDir = args.directory ? path.resolve(cwd, args.directory) : cwd;
 	if (!fs.existsSync(scanDir)) {
 		if (json) {
-			process.stdout.write(`${JSON.stringify({ error: `Directory not found: ${scanDir}` })}\n`);
+			process.stdout.write(`${JSON.stringify({ error: `目录不存在：${scanDir}` })}\n`);
 		} else {
-			process.stderr.write(`${chalk.red(`error: scan directory not found: ${scanDir}`)}\n`);
+			process.stderr.write(`${chalk.red(`错误：找不到扫描目录：${scanDir}`)}\n`);
 		}
 		process.exit(1);
 	}
@@ -851,8 +851,8 @@ async function runScan(args: TtsrScanArgs, json: boolean, cwd: string): Promise<
 
 	if (rules.length === 0) {
 		const msg = args.rule
-			? "Rule registered but produced no TTSR entry."
-			: "No TTSR rules registered for this project.";
+			? "规则已注册，但未产生 TTSR 条目。"
+			: "当前项目没有注册任何 TTSR 规则。";
 		if (json) {
 			process.stdout.write(`${JSON.stringify({ error: msg })}\n`);
 		} else {
@@ -866,8 +866,8 @@ async function runScan(args: TtsrScanArgs, json: boolean, cwd: string): Promise<
 	);
 	if (scanRulePlans.length === 0) {
 		const msg = args.rule
-			? "Rule registered but produced no usable TTSR condition."
-			: "No usable TTSR rules registered for this project.";
+			? "规则已注册，但没有可用的 TTSR 条件。"
+			: "当前项目没有注册任何可用的 TTSR 规则。";
 		if (json) {
 			process.stdout.write(`${JSON.stringify({ error: msg })}\n`);
 		} else {
@@ -882,7 +882,7 @@ async function runScan(args: TtsrScanArgs, json: boolean, cwd: string): Promise<
 	const files = await discoverScanFiles(scanDir, cwd, gitignore);
 	const emptySkipped: ScanSkipSummary = { binary: 0, large: 0, unreadable: 0, noRelevantRules: 0 };
 	if (files.length === 0) {
-		const msg = `No files found to scan in ${scanDir}`;
+		const msg = `在 ${scanDir} 中没有找到可扫描的文件`;
 		if (json) {
 			process.stdout.write(
 				`${JSON.stringify({
@@ -999,24 +999,24 @@ async function runScan(args: TtsrScanArgs, json: boolean, cwd: string): Promise<
 		);
 	} else {
 		process.stdout.write(
-			`${chalk.bold("TTSR scan")} — directory=${chalk.cyan(scanDir)} files=${chalk.dim(files.length)} scanned=${chalk.dim(scannedFiles)} rules=${chalk.dim(scanRulePlans.length)} gitignore=${chalk.dim(gitignore ? "on" : "off")} max-bytes=${chalk.dim(maxBytes === 0 ? "off" : String(maxBytes))}\n`,
+			`${chalk.bold("TTSR 扫描")} — directory=${chalk.cyan(scanDir)} files=${chalk.dim(files.length)} scanned=${chalk.dim(scannedFiles)} rules=${chalk.dim(scanRulePlans.length)} gitignore=${chalk.dim(gitignore ? "开" : "关")} max-bytes=${chalk.dim(maxBytes === 0 ? "关" : String(maxBytes))}\n`,
 		);
 		if (countSkipped(skipped) > 0) {
 			process.stdout.write(
-				`${chalk.dim(`  skipped: binary=${skipped.binary} large=${skipped.large} unreadable=${skipped.unreadable} no-relevant-rules=${skipped.noRelevantRules}`)}\n`,
+				`${chalk.dim(`  已跳过：binary=${skipped.binary} large=${skipped.large} unreadable=${skipped.unreadable} no-relevant-rules=${skipped.noRelevantRules}`)}\n`,
 			);
 		}
 
 		if (matchedFiles === 0) {
 			process.stdout.write(
-				`${chalk.green.bold("No rule matches found.")} (evaluated ${rules.length} rules on ${scannedFiles}/${files.length} files)\n`,
+				`${chalk.green.bold("未发现规则命中。")}（已在 ${scannedFiles}/${files.length} 个文件上评估 ${rules.length} 条规则）\n`,
 			);
 		} else {
 			process.stdout.write(
-				`${chalk.red.bold("Found violations/matches:")} (${totalMatches} matches across ${matchedFiles} files)\n`,
+				`${chalk.red.bold("发现违规/命中：")}（共 ${totalMatches} 处命中，涉及 ${matchedFiles} 个文件）\n`,
 			);
 			if (!includeDetails) {
-				process.stdout.write(`${chalk.dim("  rerun with --verbose to list matched files and conditions")}\n`);
+				process.stdout.write(`${chalk.dim("  使用 --verbose 重新运行可列出命中的文件和条件")}\n`);
 				return;
 			}
 
@@ -1036,7 +1036,7 @@ export async function runTtsrCommand(cmd: TtsrCommandArgs): Promise<void> {
 	const cwd = getProjectDir();
 	if (cmd.action === "test") {
 		if (!cmd.test) {
-			process.stderr.write(`${chalk.red("error: `ttsr test` requires a snippet, --file, or piped stdin")}\n`);
+			process.stderr.write(`${chalk.red("错误：`ttsr test` 需要提供代码片段、--file 或管道 stdin")}\n`);
 			process.exit(1);
 		}
 		await runTest(cmd.test, cmd.json ?? false, cwd);
@@ -1048,12 +1048,12 @@ export async function runTtsrCommand(cmd: TtsrCommandArgs): Promise<void> {
 	}
 	if (cmd.action === "scan") {
 		if (!cmd.scan) {
-			process.stderr.write(`${chalk.red("error: scan arguments missing")}\n`);
+			process.stderr.write(`${chalk.red("错误：缺少 scan 参数")}\n`);
 			process.exit(1);
 		}
 		await runScan(cmd.scan, cmd.json ?? false, cwd);
 		return;
 	}
-	process.stderr.write(`${chalk.red(`error: unknown ttsr action: ${cmd.action}`)}\n`);
+	process.stderr.write(`${chalk.red(`错误：未知的 ttsr 动作：${cmd.action}`)}\n`);
 	process.exit(1);
 }

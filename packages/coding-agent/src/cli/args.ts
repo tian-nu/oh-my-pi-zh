@@ -315,17 +315,17 @@ export function parseArgs(inputArgs: string[], extensionFlags?: Map<string, { ty
 		value => value === "--trusted-extension" || value.startsWith("--trusted-extension="),
 	);
 	if ((result.trustedExtensions?.length ?? 0) !== trustedFlagCount || swallowedTrustedFlag) {
-		throw new CliUsageError("--trusted-extension requires a non-empty, non-flag value");
+		throw new CliUsageError("--trusted-extension 需要一个非空且不以 - 开头的值");
 	}
 	if (trustedFlagCount > 0 && ((result.extensions?.length ?? 0) > 0 || (result.hooks?.length ?? 0) > 0)) {
-		throw new CliUsageError("--trusted-extension cannot be combined with --extension, -e, or --hook");
+		throw new CliUsageError("--trusted-extension 不能与 --extension、-e 或 --hook 同时使用");
 	}
 	for (const trustedPath of result.trustedExtensions ?? []) {
 		if (trustedPath.length === 0) {
-			throw new CliUsageError("--trusted-extension requires a non-empty, non-flag value");
+			throw new CliUsageError("--trusted-extension 需要一个非空且不以 - 开头的值");
 		}
 		if (!path.isAbsolute(trustedPath)) {
-			throw new CliUsageError(`--trusted-extension requires an absolute path: ${trustedPath}`);
+			throw new CliUsageError(`--trusted-extension 需要绝对路径: ${trustedPath}`);
 		}
 	}
 
@@ -339,7 +339,7 @@ export function validateToolNames(requested: readonly string[] | undefined, know
 	const unknown = requested.filter(name => !knownNames.has(name));
 	if (unknown.length === 0) return;
 	throw new CliUsageError(
-		`Unknown tool${unknown.length === 1 ? "" : "s"} in --tools: ${unknown.join(", ")}. Valid tools: ${known.join(", ")}.`,
+		`--tools 中存在未知工具${unknown.length === 1 ? "" : "（多个）"}: ${unknown.join(", ")}。可用工具: ${known.join(", ")}。`,
 	);
 }
 
@@ -355,9 +355,8 @@ export function reportUnrecognizedFlags(
 ): boolean {
 	if (args.unrecognizedFlags.length === 0) return false;
 	const flags = args.unrecognizedFlags;
-	const plural = flags.length === 1 ? "" : "s";
-	write(`${chalk.red(`Error: unknown flag${plural}: ${flags.join(", ")}`)}\n`);
-	write(`Run \`${APP_NAME} --help\` for available flags.\n`);
+	write(`${chalk.red(`错误: 未知的 flag: ${flags.join(", ")}`)}\n`);
+	write(`运行 \`${APP_NAME} --help\` 查看可用 flag。\n`);
 	return true;
 }
 
@@ -367,16 +366,16 @@ export function reportCliUsageError(
 	write: (text: string) => void = text => process.stderr.write(text),
 ): boolean {
 	if (!(error instanceof CliUsageError)) return false;
-	write(`${chalk.red(`Error: ${error.message}`)}\n`);
-	write(`Run \`${APP_NAME} --help\` for available flags.\n`);
+	write(`${chalk.red(`错误: ${error.message}`)}\n`);
+	write(`运行 \`${APP_NAME} --help\` 查看可用 flag。\n`);
 	return true;
 }
 
 export function printHelp(): void {
 	process.stdout.write(
-		`${chalk.bold(APP_NAME)} - AI coding assistant\n\n` +
-			`Run ${APP_NAME} --help for full command and option details.\n` +
-			`Run ${APP_NAME} <command> --help for command-specific help.\n\n` +
+		`${chalk.bold(APP_NAME)} - AI 编程助手\n\n` +
+			`运行 ${APP_NAME} --help 查看完整的命令与选项说明。\n` +
+			`运行 ${APP_NAME} <command> --help 查看特定命令的帮助。\n\n` +
 			`${getExtraHelpText()}\n`,
 	);
 }

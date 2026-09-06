@@ -236,22 +236,22 @@ export const commands: CommandEntry[] = [
 // fires vs. when the argv still falls through to `launch`.
 const RESERVED_TOP_LEVEL_WORDS: Record<string, string> = {
 	extensions:
-		'`omp extensions` is not a management command. Use `omp plugin list` / `omp plugin install`, or run `omp launch extensions` if you meant to send "extensions" as a prompt.',
-	list: '`omp list` is not a top-level command. Use `omp plugin list` to list installed plugins, or run `omp launch list` if you meant to send "list" as a prompt.',
+		'`omp extensions` 不是管理命令。请使用 `omp plugin list` / `omp plugin install`；如果你想发送 "extensions" 作为提示词，请运行 `omp launch extensions`。',
+	list: '`omp list` 不是顶级命令。请使用 `omp plugin list` 列出已安装的插件；如果你想发送 "list" 作为提示词，请运行 `omp launch list`。',
 	remove:
-		'`omp remove` is not a top-level command. Use `omp plugin uninstall <name>` to remove a plugin, or run `omp launch remove` if you meant to send "remove" as a prompt.',
+		'`omp remove` 不是顶级命令。请使用 `omp plugin uninstall <name>` 移除插件；如果你想发送 "remove" 作为提示词，请运行 `omp launch remove`。',
 	uninstall:
-		'`omp uninstall` is not a top-level command. Use `omp plugin uninstall <name@marketplace>` to remove a plugin, or run `omp launch uninstall` if you meant to send "uninstall" as a prompt.',
+		'`omp uninstall` 不是顶级命令。请使用 `omp plugin uninstall <name@marketplace>` 移除插件；如果你想发送 "uninstall" 作为提示词，请运行 `omp launch uninstall`。',
 	marketplace:
-		'`omp marketplace` is not a top-level command. Use `omp plugin marketplace <add|remove|update|list>` to manage marketplaces, or run `omp launch marketplace` if you meant to send "marketplace" as a prompt.',
+		'`omp marketplace` 不是顶级命令。请使用 `omp plugin marketplace <add|remove|update|list>` 管理市场；如果你想发送 "marketplace" 作为提示词，请运行 `omp launch marketplace`。',
 	discover:
-		'`omp discover` is not a top-level command. Use `omp plugin discover [marketplace]` to browse available plugins, or run `omp launch discover` if you meant to send "discover" as a prompt.',
+		'`omp discover` 不是顶级命令。请使用 `omp plugin discover [marketplace]` 浏览可用插件；如果你想发送 "discover" 作为提示词，请运行 `omp launch discover`。',
 	upgrade:
-		'`omp upgrade` is not a top-level command. Use `omp plugin upgrade [name@marketplace]` to upgrade plugins, or run `omp launch upgrade` if you meant to send "upgrade" as a prompt.',
+		'`omp upgrade` 不是顶级命令。请使用 `omp plugin upgrade [name@marketplace]` 升级插件；如果你想发送 "upgrade" 作为提示词，请运行 `omp launch upgrade`。',
 	enable:
-		'`omp enable` is not a top-level command. Use `omp plugin enable <name@marketplace>` to enable a plugin, or run `omp launch enable` if you meant to send "enable" as a prompt.',
+		'`omp enable` 不是顶级命令。请使用 `omp plugin enable <name@marketplace>` 启用插件；如果你想发送 "enable" 作为提示词，请运行 `omp launch enable`。',
 	disable:
-		'`omp disable` is not a top-level command. Use `omp plugin disable <name@marketplace>` to disable a plugin, or run `omp launch disable` if you meant to send "disable" as a prompt.',
+		'`omp disable` 不是顶级命令。请使用 `omp plugin disable <name@marketplace>` 禁用插件；如果你想发送 "disable" 作为提示词，请运行 `omp launch disable`。',
 };
 
 // Sub-actions that make `omp marketplace <sub>` unambiguously a management

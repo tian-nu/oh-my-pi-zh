@@ -62,8 +62,8 @@ export async function captureGalleryScreenshots(
 	const vhs = $which("vhs");
 	if (!vhs) {
 		throw new Error(
-			"`omp gallery --screenshot` requires VHS, which is not installed. " +
-				"Install it (e.g. `brew install vhs`, or see https://github.com/charmbracelet/vhs) and retry.",
+			"`omp gallery --screenshot` 需要 VHS，但 VHS 未安装。" +
+				"请先安装（例如 `brew install vhs`，或参见 https://github.com/charmbracelet/vhs）后重试。",
 		);
 	}
 
@@ -83,7 +83,7 @@ export async function captureGalleryScreenshots(
 	const outPaths: string[] = [];
 	for (let i = 0; i < chunks.length; i++) {
 		if (chunks.length > 1) {
-			process.stderr.write(`Rendering gallery screenshot ${i + 1}/${chunks.length}…\n`);
+			process.stderr.write(`正在渲染画廊截图 ${i + 1}/${chunks.length}…\n`);
 		}
 		const outPng = resolveScreenshotOutputPath(options.out, baseDir, i, chunks.length);
 		const lines = chunks[i].flatMap(section => section.lines);
@@ -137,7 +137,7 @@ async function renderChunk(args: RenderChunkArgs): Promise<void> {
 		const result = await Bun.$`${args.vhs} ${tapePath}`.quiet().nothrow();
 		if (result.exitCode !== 0 || !(await Bun.file(args.outPng).exists())) {
 			const detail = result.stderr.toString().trim() || result.stdout.toString().trim();
-			throw new Error(`VHS failed to render the gallery screenshot${detail ? `: ${detail.slice(-600)}` : ""}`);
+			throw new Error(`VHS 渲染画廊截图失败${detail ? `: ${detail.slice(-600)}` : ""}`);
 		}
 	} finally {
 		await Promise.all([

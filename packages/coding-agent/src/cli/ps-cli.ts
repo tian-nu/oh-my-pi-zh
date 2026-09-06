@@ -71,7 +71,7 @@ export async function runPsCommand(cmd: PsCommandArgs): Promise<void> {
 			return;
 		}
 		if (!cmd.name) {
-			console.error(chalk.red(`${cmd.action} requires a process name. Run \`omp ps\` to list processes.`));
+			console.error(chalk.red(`${cmd.action} 需要一个进程名。运行 \`omp ps\` 可列出进程。`));
 			process.exitCode = 1;
 			return;
 		}
@@ -110,7 +110,7 @@ async function runList(cmd: PsCommandArgs): Promise<void> {
 		return;
 	}
 	if (reports.length === 0) {
-		console.log(chalk.dim("No daemon broker scopes found."));
+		console.log(chalk.dim("未找到守护进程代理作用域。"));
 		return;
 	}
 	let first = true;
@@ -119,13 +119,13 @@ async function runList(cmd: PsCommandArgs): Promise<void> {
 		first = false;
 		console.log(scopeHeader(report.scope));
 		if (report.daemons.length === 0) {
-			console.log(chalk.dim("  no processes"));
+			console.log(chalk.dim("  没有进程"));
 			continue;
 		}
 		printTable(report.daemons);
 	}
 	if (!cmd.flags.all) {
-		console.log(chalk.dim("\nUse --all to include other projects and global services."));
+		console.log(chalk.dim("\n使用 --all 可包含其他项目和全局服务。"));
 	}
 }
 
@@ -163,21 +163,21 @@ async function runAction(cmd: PsCommandArgs, name: string): Promise<void> {
 		switch (cmd.action) {
 			case "info": {
 				const result = await client.request({ op: "describe", name });
-				if (result.op !== "describe") throw new Error(`Unexpected broker response ${result.op}`);
+				if (result.op !== "describe") throw new Error(`代理返回了意外的响应 ${result.op}`);
 				if (cmd.flags.json) {
 					console.log(JSON.stringify({ ...result.daemon, spec: result.spec }, null, 2));
 					return;
 				}
 				const daemon = result.daemon;
 				console.log(daemonLabel(daemon));
-				console.log(`  command:  ${formatCommand(result.spec)}`);
-				console.log(`  cwd:      ${result.spec.cwd}`);
+				console.log(`  命令:  ${formatCommand(result.spec)}`);
+				console.log(`  工作目录:      ${result.spec.cwd}`);
 				if (!TERMINAL_STATES[daemon.state])
-					console.log(`  uptime:   ${formatDuration(Date.now() - daemon.startedAt)}`);
-				if (daemon.exitReason) console.log(`  exit:     ${daemon.exitReason}`);
-				console.log(`  restarts: ${daemon.restartCount} (policy: ${result.spec.restart})`);
+					console.log(`  运行时长:   ${formatDuration(Date.now() - daemon.startedAt)}`);
+				if (daemon.exitReason) console.log(`  退出:     ${daemon.exitReason}`);
+				console.log(`  重启次数: ${daemon.restartCount} (策略: ${result.spec.restart})`);
 				console.log(
-					`  pty: ${result.spec.pty}  persist: ${result.spec.persist}  detached: ${result.spec.detached}  owner: ${daemon.owner ?? "-"}`,
+					`  pty: ${result.spec.pty}  持久化: ${result.spec.persist}  已分离: ${result.spec.detached}  所有者: ${daemon.owner ?? "-"}`,
 				);
 				return;
 			}
@@ -188,18 +188,18 @@ async function runAction(cmd: PsCommandArgs, name: string): Promise<void> {
 			case "kill": {
 				const timeoutMs = cmd.action === "kill" ? KILL_GRACE_MS : Math.round((cmd.flags.timeout ?? 5) * 1000);
 				const result = await client.request({ op: "stop", name, timeoutMs });
-				if (result.op !== "stop") throw new Error(`Unexpected broker response ${result.op}`);
-				printDaemonResult(cmd, cmd.action === "kill" ? "Killed" : "Stopped", result.daemon);
+				if (result.op !== "stop") throw new Error(`代理返回了意外的响应 ${result.op}`);
+				printDaemonResult(cmd, cmd.action === "kill" ? "已终止" : "已停止", result.daemon);
 				return;
 			}
 			case "restart": {
 				const result = await client.request({ op: "restart", name });
-				if (result.op !== "restart") throw new Error(`Unexpected broker response ${result.op}`);
-				printDaemonResult(cmd, "Restarted", result.daemon);
+				if (result.op !== "restart") throw new Error(`代理返回了意外的响应 ${result.op}`);
+				printDaemonResult(cmd, "已重启", result.daemon);
 				return;
 			}
 			default:
-				throw new Error(`Unhandled action ${cmd.action}`);
+				throw new Error(`未处理的操作 ${cmd.action}`);
 		}
 	} catch (error) {
 		console.error(chalk.red(error instanceof Error ? error.message : String(error)));
@@ -226,7 +226,7 @@ async function runLogs(cmd: PsCommandArgs, client: DaemonBrokerClient, name: str
 		renderTerminalRows: !cmd.flags.follow,
 		timeoutMs: 30_000,
 	});
-	if (first.op !== "logs") throw new Error(`Unexpected broker response ${first.op}`);
+	if (first.op !== "logs") throw new Error(`代理返回了意外的响应 ${first.op}`);
 	if (!cmd.flags.follow) {
 		const text = first.terminalRows !== undefined ? first.terminalRows.join("\n") : first.text.replace(/\n$/, "");
 		if (text) console.log(text);
@@ -250,7 +250,7 @@ async function runLogs(cmd: PsCommandArgs, client: DaemonBrokerClient, name: str
 			renderTerminalRows: false,
 			timeoutMs: 30_000,
 		});
-		if (next.op !== "logs") throw new Error(`Unexpected broker response ${next.op}`);
+		if (next.op !== "logs") throw new Error(`代理返回了意外的响应 ${next.op}`);
 		// The broker always returns the tail window (cursor is only a wait
 		// watermark), so trim the part we already printed.
 		const fresh = next.text.slice(overlapLength(previous, next.text));

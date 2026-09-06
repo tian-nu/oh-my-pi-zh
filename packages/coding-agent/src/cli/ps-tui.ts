@@ -146,25 +146,26 @@ class PsTopComponent implements Component {
 		const entry = this.#flat[this.#selected];
 		if (!entry) return;
 		const name = entry.row.snapshot.name;
-		this.#setStatus(chalk.yellow(`${verb} ${name}…`));
+		const verbLabel = verb === "restart" ? "重启" : verb === "kill" ? "强杀" : "停止";
+		this.#setStatus(chalk.yellow(`${verbLabel} ${name}…`));
 		try {
 			const client = await this.#client(entry.scope);
-			if (!client) throw new Error("Scope is not addressable from this machine");
+			if (!client) throw new Error("该作用域无法从本机访问");
 			const result = await client.request(
 				verb === "restart"
 					? { op: "restart", name }
 					: { op: "stop", name, timeoutMs: verb === "kill" ? KILL_GRACE_MS : 5_000 },
 			);
-			if (result.op !== "restart" && result.op !== "stop") throw new Error(`Unexpected response ${result.op}`);
+			if (result.op !== "restart" && result.op !== "stop") throw new Error(`意外的响应 ${result.op}`);
 			this.#setStatus(
 				chalk.green(
-					`${verb === "restart" ? "Restarted" : verb === "kill" ? "Killed" : "Stopped"} ${daemonLabel(result.daemon)}`,
+					`已${verb === "restart" ? "重启" : verb === "kill" ? "强杀" : "停止"} ${daemonLabel(result.daemon)}`,
 				),
 			);
 			void this.#refresh();
 		} catch (error) {
 			this.#setStatus(
-				chalk.red(`${verb} ${name} failed: ${error instanceof Error ? error.message : String(error)}`),
+				chalk.red(`${verbLabel} ${name} 失败: ${error instanceof Error ? error.message : String(error)}`),
 			);
 		}
 	}
@@ -174,9 +175,9 @@ class PsTopComponent implements Component {
 		if (!entry) return;
 		try {
 			const client = await this.#client(entry.scope);
-			if (!client) throw new Error("Scope is not addressable from this machine");
+			if (!client) throw new Error("该作用域无法从本机访问");
 			const result = await client.request({ op: "describe", name: entry.row.snapshot.name });
-			if (result.op !== "describe") throw new Error(`Unexpected response ${result.op}`);
+			if (result.op !== "describe") throw new Error(`意外的响应 ${result.op}`);
 			this.#info = { daemon: result.daemon, spec: result.spec };
 			this.#view = "info";
 			this.#ui.requestRender();
@@ -196,7 +197,7 @@ class PsTopComponent implements Component {
 			if (this.#disposed || this.#view !== "logs" || !current) return;
 			try {
 				const client = await this.#client(current.scope);
-				if (!client) throw new Error("Scope is not addressable from this machine");
+				if (!client) throw new Error("该作用域无法从本机访问");
 				const result = await client.request({
 					op: "logs",
 					name: current.row.snapshot.name,
@@ -206,7 +207,7 @@ class PsTopComponent implements Component {
 					renderTerminalRows: true,
 					timeoutMs: 10_000,
 				});
-				if (result.op !== "logs") throw new Error(`Unexpected response ${result.op}`);
+				if (result.op !== "logs") throw new Error(`意外的响应 ${result.op}`);
 				this.#logsLines = result.terminalRows ?? result.text.replace(/\n$/, "").split("\n");
 				this.#logsState = result.state;
 				this.#ui.requestRender();
@@ -250,7 +251,7 @@ class PsTopComponent implements Component {
 		else if (matchesKey(data, "down") || data === "j") this.#moveSelection(1);
 		else if (data === "a") {
 			this.#all = !this.#all;
-			this.#setStatus(chalk.dim(this.#all ? "Showing all scopes" : "Showing current scope"));
+			this.#setStatus(chalk.dim(this.#all ? "正在显示所有作用域" : "正在显示当前作用域"));
 			void this.#refresh();
 		} else if (matchesKey(data, "enter") || data === "i") void this.#openInfo();
 		else if (data === "l") this.#openLogs();
@@ -281,7 +282,7 @@ class PsTopComponent implements Component {
 	}
 
 	#header(width: number, title: string): string {
-		const age = this.#lastRefresh ? `updated ${formatDuration(Date.now() - this.#lastRefresh)} ago` : "updating…";
+		const age = this.#lastRefresh ? `${formatDuration(Date.now() - this.#lastRefresh)} 前更新` : "更新中…";
 		const left = ` ${chalk.bold("omp ps")} ${chalk.dim("·")} ${title}`;
 		const right = chalk.dim(age);
 		const pad = Math.max(1, width - Bun.stringWidth(left) - Bun.stringWidth(right) - 1);
@@ -294,11 +295,11 @@ class PsTopComponent implements Component {
 	}
 
 	#renderTable(width: number, height: number): string[] {
-		const scopesLabel = `${this.#flat.length} process${this.#flat.length === 1 ? "" : "es"} in ${this.#reports.length} scope${this.#reports.length === 1 ? "" : "s"} ${chalk.dim(this.#all ? "(all)" : "(current)")}`;
+		const scopesLabel = `${this.#reports.length} 个作用域内共 ${this.#flat.length} 个进程 ${chalk.dim(this.#all ? "(全部)" : "(当前)")}`;
 		const header = this.#header(width, scopesLabel);
 		const footer = this.#footer(
 			width,
-			"↑/↓ select · enter info · l logs · s stop · x kill · r restart · a all scopes · q quit",
+			"↑/↓ 选择 · enter 信息 · l 日志 · s 停止 · x 强杀 · r 重启 · a 全部作用域 · q 退出",
 		);
 		const bodyHeight = height - 1 - footer.length;
 
@@ -315,7 +316,7 @@ class PsTopComponent implements Component {
 		for (const report of this.#reports) {
 			body.push({ text: ` ${scopeHeader(report.scope)}` });
 			if (report.daemons.length === 0) {
-				body.push({ text: chalk.dim("   no processes") });
+				body.push({ text: chalk.dim("   无进程") });
 			} else {
 				body.push({ text: chalk.dim(renderRow([...TABLE_HEADER])) });
 				for (const row of report.daemons) {
@@ -329,7 +330,7 @@ class PsTopComponent implements Component {
 			}
 			body.push({ text: "" });
 		}
-		if (body.length === 0) body.push({ text: chalk.dim(" No daemon broker scopes found.") });
+		if (body.length === 0) body.push({ text: chalk.dim(" 未找到守护进程代理作用域。") });
 
 		// Keep the selected line inside the viewport.
 		const selectedLine = body.findIndex(line => line.flat === this.#selected);
@@ -355,23 +356,23 @@ class PsTopComponent implements Component {
 
 	#renderInfo(width: number, height: number): string[] {
 		const info = this.#info;
-		const header = this.#header(width, "process info");
-		const footer = this.#footer(width, "esc back · q back");
+		const header = this.#header(width, "进程信息");
+		const footer = this.#footer(width, "esc 返回 · q 返回");
 		const lines = [header, ""];
 		if (info) {
 			const daemon = info.daemon;
 			lines.push(` ${chalk.bold(daemonLabel(daemon))}`);
 			lines.push("");
-			lines.push(`   command:  ${collapseCommand(formatCommand(info.spec))}`);
-			lines.push(`   cwd:      ${info.spec.cwd}`);
+			lines.push(`   命令:     ${collapseCommand(formatCommand(info.spec))}`);
+			lines.push(`   工作目录: ${info.spec.cwd}`);
 			if (!TERMINAL_STATES[daemon.state])
-				lines.push(`   uptime:   ${formatDuration(Date.now() - daemon.startedAt)}`);
-			if (daemon.exitReason) lines.push(`   exit:     ${daemon.exitReason}`);
-			lines.push(`   restarts: ${daemon.restartCount} (policy: ${info.spec.restart})`);
-			lines.push(`   pty: ${info.spec.pty}  persist: ${info.spec.persist}  detached: ${info.spec.detached}`);
-			lines.push(`   owner:    ${daemon.owner ?? "-"}`);
+				lines.push(`   运行时长: ${formatDuration(Date.now() - daemon.startedAt)}`);
+			if (daemon.exitReason) lines.push(`   退出:     ${daemon.exitReason}`);
+			lines.push(`   重启次数: ${daemon.restartCount} (策略: ${info.spec.restart})`);
+			lines.push(`   pty: ${info.spec.pty}  持久化: ${info.spec.persist}  分离: ${info.spec.detached}`);
+			lines.push(`   所有者:   ${daemon.owner ?? "-"}`);
 		} else {
-			lines.push(chalk.dim(" loading…"));
+			lines.push(chalk.dim(" 加载中…"));
 		}
 		const truncated = lines.map(line => truncateToWidth(line, width));
 		while (truncated.length < height - footer.length) truncated.push("");
@@ -384,9 +385,9 @@ class PsTopComponent implements Component {
 		const name = entry?.row.snapshot.name ?? "?";
 		const header = this.#header(
 			width,
-			`logs ${chalk.bold(name)}${this.#logsState ? chalk.dim(` · ${this.#logsState}`) : ""}`,
+			`日志 ${chalk.bold(name)}${this.#logsState ? chalk.dim(` · ${this.#logsState}`) : ""}`,
 		);
-		const footer = this.#footer(width, "esc back · q back · view refreshes live");
+		const footer = this.#footer(width, "esc 返回 · q 返回 · 视图实时刷新");
 		const bodyHeight = height - 1 - footer.length;
 		const tail = this.#logsLines.slice(-bodyHeight);
 		const lines = [header, ...tail.map(line => truncateToWidth(` ${line}`, width))];

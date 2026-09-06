@@ -33,8 +33,8 @@ import type {
 } from "./types";
 
 function formatFreshSessionResult(result: FreshSessionResult): string {
-	const stateLabel = result.closedProviderSessions === 1 ? "provider state" : "provider states";
-	return `Fresh provider session started (${result.closedProviderSessions} ${stateLabel} pruned).`;
+	const stateLabel = result.closedProviderSessions === 1 ? "个提供商状态" : "个提供商状态";
+	return `已启动全新的提供商会话（清理了 ${result.closedProviderSessions} ${stateLabel}）。`;
 }
 
 export const shutdownHandlerTui = (
@@ -52,14 +52,14 @@ function parseShakeMode(args: string): ShakeMode | { error: string } {
 	if (verb === "" || verb === "elide") return "elide";
 	if (verb === "images") return "images";
 	if (verb === "thinking") return "thinking";
-	return { error: `Unknown /shake mode "${verb}". Use elide, images, or thinking.` };
+	return { error: `未知的 /shake 模式 "${verb}"。可用：elide、images、thinking。` };
 }
 
 /** Format the session's workspace directories (cwd + additional) for display. */
 function formatWorkspaceDirectories(runtime: SlashCommandRuntime, note?: string): string {
 	const cwd = runtime.sessionManager.getCwd();
 	const additional = runtime.sessionManager.getAdditionalDirectories();
-	const lines = ["Workspace directories:", `  ${cwd} (working directory)`, ...additional.map(d => `  ${d}`)];
+	const lines = ["工作区目录：", `  ${cwd}（当前工作目录）`, ...additional.map(d => `  ${d}`)];
 	return note ? `${note}\n${lines.join("\n")}` : lines.join("\n");
 }
 async function fatalMoveFailure(text: string, runtime: SlashCommandRuntime): Promise<SlashCommandResult> {
@@ -81,13 +81,13 @@ async function relocateHeadlessSession(
 	try {
 		await runtime.settings.flush();
 	} catch (err) {
-		return usage(`Failed to save pending settings: ${errorMessage(err)}`, runtime);
+		return usage(`保存待写入设置失败：${errorMessage(err)}`, runtime);
 	}
 	const previousState = runtime.sessionManager.captureState();
 	try {
 		await runtime.session.moveSession(resolvedPath);
 	} catch (err) {
-		return usage(`Move failed: ${errorMessage(err)}`, runtime);
+		return usage(`移动失败：${errorMessage(err)}`, runtime);
 	}
 	try {
 		setProjectDir(resolvedPath);
@@ -103,16 +103,16 @@ async function relocateHeadlessSession(
 			} catch {}
 			if (!realigned) {
 				return fatalMoveFailure(
-					`Move failed and rollback failed: ${errorMessage(rollbackError)} (failed to re-align workspace to ${actual}; process remains at source while session is at ${actual})`,
+					`移动失败且回滚失败：${errorMessage(rollbackError)}（无法将工作区重新对齐到 ${actual}；进程仍停留在源目录，而会话位于 ${actual}）`,
 					runtime,
 				);
 			}
 			return usage(
-				`Move failed and rollback failed: ${errorMessage(rollbackError)} (workspace remains at ${actual})`,
+				`移动失败且回滚失败：${errorMessage(rollbackError)}（工作区仍停留在 ${actual}）`,
 				runtime,
 			);
 		}
-		return usage(`Move failed: ${errorMessage(err)}`, runtime);
+		return usage(`移动失败：${errorMessage(err)}`, runtime);
 	}
 	try {
 		await rescopeHeadlessToCwd(runtime, resolvedPath);
@@ -129,16 +129,16 @@ async function relocateHeadlessSession(
 			} catch {}
 			if (!realigned) {
 				return fatalMoveFailure(
-					`Move failed and rollback failed: ${errorMessage(rollbackError)} (failed to re-align workspace to ${actual}; process remains at source while session is at ${actual})`,
+					`移动失败且回滚失败：${errorMessage(rollbackError)}（无法将工作区重新对齐到 ${actual}；进程仍停留在源目录，而会话位于 ${actual}）`,
 					runtime,
 				);
 			}
 			return usage(
-				`Move failed and rollback failed: ${errorMessage(rollbackError)} (workspace remains at ${actual})`,
+				`移动失败且回滚失败：${errorMessage(rollbackError)}（工作区仍停留在 ${actual}）`,
 				runtime,
 			);
 		}
-		return usage(`Move failed: ${errorMessage(err)}`, runtime);
+		return usage(`移动失败：${errorMessage(err)}`, runtime);
 	}
 	await runtime.notifyConfigChanged?.();
 	await runtime.notifyTitleChanged?.();
@@ -149,18 +149,18 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "ssh",
 		icon: "host",
-		description: "Manage SSH hosts (add, list, remove)",
-		acpDescription: "Manage SSH connections",
+		description: "管理 SSH 主机（添加、列出、移除）",
+		acpDescription: "管理 SSH 连接",
 		inlineHint: "<subcommand>",
 		subcommands: [
 			{
 				name: "add",
-				description: "Add an SSH host",
+				description: "添加 SSH 主机",
 				usage: "<name> --host <host> [--user <user>] [--port <port>] [--key <keyPath>] [--scope project|user]",
 			},
-			{ name: "list", description: "List all configured SSH hosts" },
-			{ name: "remove", description: "Remove an SSH host", usage: "<name> [--scope project|user]" },
-			{ name: "help", description: "Show help message" },
+			{ name: "list", description: "列出所有已配置的 SSH 主机" },
+			{ name: "remove", description: "移除 SSH 主机", usage: "<name> [--scope project|user]" },
+			{ name: "help", description: "显示帮助信息" },
 		],
 		allowArgs: true,
 		handle: handleSshAcp,
@@ -172,7 +172,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "new",
 		icon: "plus",
-		description: "Start a new session",
+		description: "开始新会话",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runtime.ctx.handleClearCommand();
@@ -181,14 +181,14 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "fresh",
 		icon: "restart",
-		description: "Reset provider stream state without changing the local transcript",
+		description: "重置提供商流状态，但保留本地会话记录",
 		getTuiAutocompleteDescription: runtime =>
-			runtime.ctx.session.isStreaming ? "Fresh: unavailable while streaming" : "Fresh: ready",
+			runtime.ctx.session.isStreaming ? "刷新：正在流式输出时不可用" : "刷新：就绪",
 		handle: async (_command, runtime) => {
 			const result = runtime.session.freshSession();
 			if (!result) {
 				await runtime.output(
-					"Wait for the current response to finish or abort it before refreshing provider state.",
+					"请等待当前响应完成或中止后再刷新提供商状态。",
 				);
 				return commandConsumed();
 			}
@@ -203,9 +203,9 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "clear",
 		icon: "eraser",
-		description: "Clear the conversation context in place, keeping the session",
+		description: "原地清空对话上下文，但保留会话",
 		getTuiAutocompleteDescription: runtime =>
-			runtime.ctx.session.isStreaming ? "Clear: unavailable while streaming" : "Clear: drop context, keep session",
+			runtime.ctx.session.isStreaming ? "清空：正在流式输出时不可用" : "清空：丢弃上下文，保留会话",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runtime.ctx.handleResetContextCommand();
@@ -214,7 +214,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "drop",
 		icon: "trash",
-		description: "Delete the current session and start a new one",
+		description: "删除当前会话并开始新会话",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runtime.ctx.handleDropCommand();
@@ -223,8 +223,8 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "compact",
 		icon: "compress",
-		description: "Manually compact the session context",
-		acpDescription: "Compact the conversation",
+		description: "手动压缩会话上下文",
+		acpDescription: "压缩对话",
 		subcommands: COMPACT_MODES.map(mode => ({
 			name: mode.name,
 			description: mode.description,
@@ -234,7 +234,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
 			const usage = runtime.ctx.session.getContextUsage();
-			return usage ? `Compact: context ${Math.round(usage.percent)}% used` : "Compact: context unavailable";
+			return usage ? `压缩：上下文已使用 ${Math.round(usage.percent)}%` : "压缩：上下文信息不可用";
 		},
 		handle: async (command, runtime) => {
 			const parsed = parseCompactArgs(command.args);
@@ -254,16 +254,16 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 					// Compaction precondition failures (no model, already compacted, too
 					// small) and provider errors propagate as plain Errors; surface them
 					// via runtime.output so they don't fail the ACP prompt turn.
-					await runtime.output(`Compaction failed: ${errorMessage(err)}`);
+					await runtime.output(`压缩失败：${errorMessage(err)}`);
 					return;
 				}
 				const after = runtime.session.getContextUsage?.();
 				const afterTokens = after?.tokens;
 				if (beforeTokens != null && afterTokens != null) {
 					const saved = beforeTokens - afterTokens;
-					await runtime.output(`Compaction complete. Tokens: ${beforeTokens} -> ${afterTokens} (saved ${saved}).`);
+					await runtime.output(`压缩完成。Token：${beforeTokens} -> ${afterTokens}（节省 ${saved}）。`);
 				} else {
-					await runtime.output("Compaction complete.");
+					await runtime.output("压缩完成。");
 				}
 			};
 			// Provider-backed: background-dispatch under RPC so the serialized command
@@ -289,12 +289,12 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "shake",
 		icon: "vibrate",
-		description: "Drop heavy content from context (tool results, large blocks)",
-		acpDescription: "Shake heavy content out of the conversation context",
+		description: "从上下文中剔除大块内容（工具结果、大代码块）",
+		acpDescription: "从对话上下文中剔除大块内容",
 		subcommands: [
-			{ name: "elide", description: "Strip tool results + large blocks (default)" },
-			{ name: "images", description: "Strip image blocks" },
-			{ name: "thinking", description: "Drop all thinking blocks" },
+			{ name: "elide", description: "剔除工具结果和大代码块（默认）" },
+			{ name: "images", description: "剔除图片块" },
+			{ name: "thinking", description: "丢弃所有思考块" },
 		],
 		acpInputHint: "[elide|images|thinking]",
 		allowArgs: true,
@@ -318,16 +318,16 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "handoff",
 		icon: "handoff",
-		description: "Hand off session context to a new session",
-		acpDescription: "Summarize the session into a handoff document and compact in place",
+		description: "将当前会话上下文交接给新会话",
+		acpDescription: "将会话总结为交接文档并原地压缩",
 		inlineHint: "[focus instructions]",
 		allowArgs: true,
 		handle: async (command, runtime) => {
 			if (runtime.session.isStreaming) {
-				return usage("Wait for the current response to finish or abort it before handing off.", runtime);
+				return usage("请等待当前响应完成或中止后再进行交接。", runtime);
 			}
 			if (runtime.session.isGeneratingHandoff) {
-				return usage("Handoff generation is already in progress.", runtime);
+				return usage("交接文档已在生成中。", runtime);
 			}
 			const runHandoff = async (): Promise<void> => {
 				let result: HandoffResult | undefined;
@@ -351,23 +351,23 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 					// and is surfaced verbatim behind the same "<verb> failed:" prefix
 					// `/compact` uses.
 					if (message === "Handoff cancelled") {
-						await runtime.output("Handoff cancelled.");
+						await runtime.output("交接已取消。");
 						return;
 					}
 					// Persist the real failure so it stays debuggable after the client
 					// message scrolls away (same rationale as the TUI path, #7993).
 					logger.error("Handoff failed", { error: message });
-					await runtime.output(`Handoff failed: ${message}`);
+					await runtime.output(`交接失败：${message}`);
 					return;
 				}
 				if (!result) {
-					await runtime.output("Handoff cancelled.");
+					await runtime.output("交接已取消。");
 					return;
 				}
 				// `savedPath` is deliberately not reported: `SessionHandoff` only writes
 				// the document to disk when `options.autoTriggered` is set, which the
 				// user-invoked path never passes.
-				await runtime.output("Context handed off and compacted in place.");
+				await runtime.output("上下文已交接并原地压缩。");
 			};
 			if (runtime.runCommandInBackground) {
 				runtime.runCommandInBackground(runHandoff);
@@ -385,7 +385,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "resume",
 		icon: "history",
-		description: "Resume a different session",
+		description: "恢复其他会话",
 		inlineHint: "[session id|@claude|@codex]",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -407,7 +407,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 				{ allowGlobalFallback: true },
 			);
 			if (!match) {
-				runtime.ctx.showError(`Session "${sessionArg}" not found`);
+				runtime.ctx.showError(`未找到会话 "${sessionArg}"`);
 				return;
 			}
 			await runtime.ctx.handleResumeSession(match.session.path);
@@ -416,7 +416,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "pin",
 		icon: "pin",
-		description: "Pin or unpin a session at the top of the resume list",
+		description: "将会话固定/取消固定在恢复列表顶部",
 		inlineHint: "[session id]",
 		allowArgs: true,
 		handle: async (command, runtime) => {
@@ -430,24 +430,24 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 					{ allowGlobalFallback: true },
 				);
 				if (!match) {
-					return usage(`Session "${sessionArg}" not found.`, runtime);
+					return usage(`未找到会话 "${sessionArg}"。`, runtime);
 				}
 				sessionId = match.session.id;
 			} else {
 				sessionId = runtime.sessionManager.getSessionId();
 				if (!sessionId) {
-					return usage("No active session to pin.", runtime);
+					return usage("没有可固定的活动会话。", runtime);
 				}
 			}
 			const pinned = await toggleSessionPin(sessionId);
-			await runtime.output(pinned ? "Session pinned to the top of the resume list." : "Session unpinned.");
+			await runtime.output(pinned ? "会话已固定到恢复列表顶部。" : "会话已取消固定。");
 			return commandConsumed();
 		},
 	},
 	{
 		name: "btw",
 		icon: "question",
-		description: "Ask an ephemeral side question using the current session context",
+		description: "基于当前会话上下文提一个临时的小问题",
 		inlineHint: "<question>",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -459,7 +459,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "tan",
 		icon: "rocket",
-		description: "Run a full background agent on tangential work",
+		description: "用完整的后台 agent 处理与主线无关的工作",
 		inlineHint: "<work>",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -471,7 +471,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "omfg",
 		icon: "rule",
-		description: "Forge a TTSR rule from a complaint to stop a recurring behavior",
+		description: "从一次吐槽提炼 TTSR 规则，以杜绝反复出现的问题",
 		inlineHint: "<complaint>",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -483,7 +483,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "cleanse",
 		icon: "stethoscope",
-		description: "Detect and fix project diagnostics with weighted parallel subagents",
+		description: "用带权重的并行子 agent 检测并修复项目诊断问题",
 		inlineHint: "[request] [--all]",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -495,16 +495,16 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "retry",
 		icon: "redo",
-		description: "Retry the last failed agent turn",
+		description: "重试上一次失败的 agent 回合",
 		handle: async (_command, runtime) => {
 			if (runtime.session.isStreaming) {
-				return usage("Wait for the current response to finish or abort it before retrying.", runtime);
+				return usage("请等待当前响应完成或中止后再重试。", runtime);
 			}
 			const didRetry = await runtime.session.retry();
 			if (!didRetry) {
-				return usage("Nothing to retry.", runtime);
+				return usage("没有可重试的内容。", runtime);
 			}
-			await runtime.output("Retrying the last failed turn.");
+			await runtime.output("正在重试上一次失败的回合。");
 			// `AgentSession.retry()` only schedules the continuation as a
 			// post-prompt task; it returns before the retried turn streams. Hosts
 			// whose prompt turn owns the event subscription (ACP) must stay open
@@ -522,7 +522,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 		handleTui: async (_command, runtime) => {
 			const didRetry = await runtime.ctx.session.retry();
 			if (!didRetry) {
-				runtime.ctx.showStatus("Nothing to retry");
+				runtime.ctx.showStatus("没有可重试的内容");
 			}
 			runtime.ctx.editor.setText("");
 		},
@@ -530,7 +530,7 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "debug",
 		icon: "bug",
-		description: "Open debug tools selector",
+		description: "打开调试工具选择器",
 		handleTui: async (_command, runtime) => {
 			await runtime.ctx.showDebugSelector();
 			runtime.ctx.editor.setText("");
@@ -539,29 +539,29 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "memory",
 		icon: "memory",
-		description: "Inspect and operate memory maintenance",
-		acpDescription: "Manage memory",
+		description: "查看并操作记忆维护",
+		acpDescription: "管理记忆",
 		acpInputHint: "<subcommand>",
 		subcommands: [
-			{ name: "view", description: "Show current memory injection payload" },
-			{ name: "stats", description: "Show memory backend statistics" },
-			{ name: "diagnose", description: "Run memory backend diagnostics" },
-			{ name: "queue", description: "Show pending memory deltas awaiting consolidation" },
-			{ name: "sync", description: "Run memory consolidation now" },
-			{ name: "clear", description: "Clear persisted memory data and artifacts" },
-			{ name: "reset", description: "Alias for clear" },
-			{ name: "enqueue", description: "Enqueue memory consolidation maintenance" },
-			{ name: "rebuild", description: "Alias for enqueue" },
-			{ name: "mm list", description: "List mental models on the active bank" },
-			{ name: "mm show", description: "Show one mental model (id required)" },
+			{ name: "view", description: "查看当前注入的记忆内容" },
+			{ name: "stats", description: "显示记忆后端统计" },
+			{ name: "diagnose", description: "运行记忆后端诊断" },
+			{ name: "queue", description: "显示等待整合的待处理记忆增量" },
+			{ name: "sync", description: "立即运行记忆整合" },
+			{ name: "clear", description: "清除已持久化的记忆数据和产物" },
+			{ name: "reset", description: "clear 的别名" },
+			{ name: "enqueue", description: "将记忆整合维护加入队列" },
+			{ name: "rebuild", description: "enqueue 的别名" },
+			{ name: "mm list", description: "列出当前库中的心理模型" },
+			{ name: "mm show", description: "查看单个心理模型（需提供 id）" },
 			{
 				name: "mm refresh",
-				description: "Refresh auto-refresh models bank-wide, or one model by id",
+				description: "按 id 刷新单个或全库自动刷新的心理模型",
 			},
-			{ name: "mm history", description: "Diff the change history of a mental model" },
-			{ name: "mm seed", description: "Create any built-in mental models that are missing" },
-			{ name: "mm delete", description: "Delete a mental model from the bank (id required)" },
-			{ name: "mm reload", description: "Re-pull the cached <mental_models> block" },
+			{ name: "mm history", description: "对比心理模型的变更历史" },
+			{ name: "mm seed", description: "补建缺失的内置心理模型" },
+			{ name: "mm delete", description: "从库中删除心理模型（需提供 id）" },
+			{ name: "mm reload", description: "重新拉取缓存的 <mental_models> 块" },
 		],
 		allowArgs: true,
 		handle: async (command, runtime) => {
@@ -574,20 +574,20 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 						runtime.settings,
 						runtime.session,
 					);
-					await runtime.output(payload || "Memory payload is empty.");
+					await runtime.output(payload || "记忆内容为空。");
 					return commandConsumed();
 				}
 				case "clear":
 				case "reset": {
 					await backend.clear(runtime.settings.getAgentDir(), runtime.cwd, runtime.session);
 					await runtime.session.refreshBaseSystemPrompt();
-					await runtime.output("Memory cleared.");
+					await runtime.output("记忆已清除。");
 					return commandConsumed();
 				}
 				case "enqueue":
 				case "rebuild": {
 					await backend.enqueue(runtime.settings.getAgentDir(), runtime.cwd, runtime.session);
-					await runtime.output("Memory consolidation enqueued.");
+					await runtime.output("记忆整合已加入队列。");
 					return commandConsumed();
 				}
 				case "queue": {
@@ -596,12 +596,12 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 						cwd: runtime.cwd,
 						session: runtime.session,
 					});
-					await runtime.output(payload ?? `Memory queue is not available for the ${backend.id} backend.`);
+					await runtime.output(payload ?? `${backend.id} 后端不支持记忆队列。`);
 					return commandConsumed();
 				}
 				case "sync": {
 					await backend.enqueue(runtime.settings.getAgentDir(), runtime.cwd, runtime.session);
-					await runtime.output("Memory consolidation ran.");
+					await runtime.output("记忆整合已运行。");
 					return commandConsumed();
 				}
 				case "stats":
@@ -613,11 +613,11 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 				}
 				case "mm":
 					return usage(
-						"Mental-model maintenance via /memory mm is unsupported in ACP mode; use the hindsight HTTP API directly.",
+						"ACP 模式下不支持通过 /memory mm 维护心理模型；请直接使用 hindsight HTTP API。",
 						runtime,
 					);
 				default:
-					return usage("Usage: /memory <view|stats|diagnose|clear|reset|enqueue|rebuild|queue|sync>", runtime);
+					return usage("用法：/memory <view|stats|diagnose|clear|reset|enqueue|rebuild|queue|sync>", runtime);
 			}
 		},
 		handleTui: async (command, runtime) => {
@@ -628,24 +628,24 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "rename",
 		icon: "pencil",
-		description: "Rename the current session",
+		description: "重命名当前会话",
 		inlineHint: "<title>",
 		allowArgs: true,
 		handle: async (command, runtime) => {
-			if (!command.args) return usage("Usage: /rename <title>", runtime);
+			if (!command.args) return usage("用法：/rename <title>", runtime);
 			const ok = await runtime.sessionManager.setSessionName(command.args, "user");
 			if (!ok) {
-				await runtime.output("Session name not changed (a user-set name takes precedence).");
+				await runtime.output("会话名称未更改（用户设置的名称优先）。");
 				return commandConsumed();
 			}
 			await runtime.notifyTitleChanged?.();
-			await runtime.output(`Session renamed to ${command.args}.`);
+			await runtime.output(`会话已重命名为 ${command.args}。`);
 			return commandConsumed();
 		},
 		handleTui: async (command, runtime) => {
 			const title = command.args.trim();
 			if (!title) {
-				runtime.ctx.showStatus("Usage: /rename <title>");
+				runtime.ctx.showStatus("用法：/rename <title>");
 				runtime.ctx.editor.setText("");
 				return;
 			}
@@ -656,25 +656,25 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "move",
 		icon: "folderMove",
-		description: "Move the current session to a different directory",
-		acpDescription: "Move the current session to a different directory",
+		description: "将当前会话移动到其他目录",
+		acpDescription: "将当前会话移动到其他目录",
 		inlineHint: "[<path>]",
 		allowArgs: true,
 		handle: async (command, runtime) => {
-			if (runtime.session.isStreaming) return usage("Cannot move while streaming.", runtime);
-			if (!command.args) return usage("Usage: /move <path>", runtime);
+			if (runtime.session.isStreaming) return usage("正在流式输出时无法移动。", runtime);
+			if (!command.args) return usage("用法：/move <path>", runtime);
 			const resolvedPath = resolveToCwd(command.args, runtime.cwd);
 			try {
 				const stat = await fs.stat(resolvedPath);
 				if (!stat.isDirectory()) {
-					return usage(`Not a directory: ${resolvedPath}`, runtime);
+					return usage(`不是目录：${resolvedPath}`, runtime);
 				}
 			} catch {
-				return usage(`Directory does not exist: ${resolvedPath}`, runtime);
+				return usage(`目录不存在：${resolvedPath}`, runtime);
 			}
 			const failure = await relocateHeadlessSession(runtime, resolvedPath);
 			if (failure) return failure;
-			await runtime.output(`Moved to ${runtime.sessionManager.getCwd()}.`);
+			await runtime.output(`已移动到 ${runtime.sessionManager.getCwd()}。`);
 			return commandConsumed();
 		},
 		handleTui: async (command, runtime) => {
@@ -687,26 +687,26 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 		name: "wt",
 		aliases: ["worktree"],
 		icon: "folderMove",
-		description: "Move this session into a new worktree, changes included",
-		acpDescription: "Move this session into a new worktree, changes included",
+		description: "将本会话移入新的 worktree（包含未提交更改）",
+		acpDescription: "将本会话移入新的 worktree（包含未提交更改）",
 		inlineHint: "[<branch>]",
 		allowArgs: true,
 		handle: async (command, runtime) => {
-			if (runtime.session.isStreaming) return usage("Cannot create a worktree while streaming.", runtime);
+			if (runtime.session.isStreaming) return usage("正在流式输出时无法创建 worktree。", runtime);
 			const branch = command.args.trim() || defaultSessionWorktreeBranch();
 			const sourceCwd = runtime.sessionManager.getCwd();
 			let worktree: SessionWorktree;
 			try {
 				worktree = await createSessionWorktree(sourceCwd, runtime.settings, branch);
 			} catch (err) {
-				return usage(`Worktree creation failed: ${errorMessage(err)}`, runtime);
+				return usage(`创建 worktree 失败：${errorMessage(err)}`, runtime);
 			}
 			const failure = await relocateHeadlessSession(runtime, worktree.path);
 			if (failure) return failure;
 			const cleanup = await cleanSourceCheckoutIfConfigured(sourceCwd, runtime.settings);
 			if (cleanup.errorMessage !== undefined) {
 				await runtime.output(
-					`Warning: Worktree created, but cleaning source checkout failed: ${cleanup.errorMessage}`,
+					`警告：worktree 已创建，但清理源检出失败：${cleanup.errorMessage}`,
 				);
 			}
 			await runtime.output(formatSessionWorktreeSummary(worktree, cleanup.cleaned));
@@ -721,19 +721,19 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	{
 		name: "add-dir",
 		icon: "folderPlus",
-		description: "Add a workspace directory to this session (multi-root)",
-		acpDescription: "Add a workspace directory to this session",
+		description: "为当前会话添加工作区目录（多根目录）",
+		acpDescription: "为当前会话添加工作区目录",
 		inlineHint: "<path>",
 		allowArgs: true,
 		handle: async (command, runtime) => {
-			if (runtime.session.isStreaming) return usage("Cannot add a directory while streaming.", runtime);
-			if (!command.args) return usage(formatWorkspaceDirectories(runtime, "Usage: /add-dir <path>"), runtime);
+			if (runtime.session.isStreaming) return usage("正在流式输出时无法添加目录。", runtime);
+			if (!command.args) return usage(formatWorkspaceDirectories(runtime, "用法：/add-dir <path>"), runtime);
 			const resolved = resolveToCwd(command.args, runtime.cwd);
 			try {
 				const stat = await fs.stat(resolved);
-				if (!stat.isDirectory()) return usage(`Not a directory: ${resolved}`, runtime);
+				if (!stat.isDirectory()) return usage(`不是目录：${resolved}`, runtime);
 			} catch {
-				return usage(`Directory does not exist: ${resolved}`, runtime);
+				return usage(`目录不存在：${resolved}`, runtime);
 			}
 			let added: string | null;
 			try {
@@ -742,27 +742,27 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 				return usage(errorMessage(err), runtime);
 			}
 			if (added === null) {
-				await runtime.output(`Already in the workspace: ${resolved}`);
+				await runtime.output(`已在工作区中：${resolved}`);
 				return commandConsumed();
 			}
 			await runtime.session.refreshBaseSystemPrompt();
-			await runtime.output(formatWorkspaceDirectories(runtime, `Added ${added}.`));
+			await runtime.output(formatWorkspaceDirectories(runtime, `已添加 ${added}。`));
 			return commandConsumed();
 		},
 	},
 	{
 		name: "remove-dir",
 		icon: "folderMinus",
-		description: "Remove a workspace directory from this session",
-		acpDescription: "Remove a workspace directory from this session",
+		description: "从当前会话移除工作区目录",
+		acpDescription: "从当前会话移除工作区目录",
 		inlineHint: "<path>",
 		allowArgs: true,
 		handle: async (command, runtime) => {
-			if (runtime.session.isStreaming) return usage("Cannot remove a directory while streaming.", runtime);
-			if (!command.args) return usage("Usage: /remove-dir <path>", runtime);
+			if (runtime.session.isStreaming) return usage("正在流式输出时无法移除目录。", runtime);
+			if (!command.args) return usage("用法：/remove-dir <path>", runtime);
 			const resolved = resolveToCwd(command.args, runtime.cwd);
 			if (resolved === path.resolve(runtime.cwd)) {
-				return usage("Cannot remove the working directory; use /move to change it.", runtime);
+				return usage("无法移除当前工作目录；请改用 /move。", runtime);
 			}
 			let removed: string | null;
 			try {
@@ -771,18 +771,18 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 				return usage(errorMessage(err), runtime);
 			}
 			if (removed === null) {
-				await runtime.output(`Not a workspace directory: ${resolved}`);
+				await runtime.output(`不是工作区目录：${resolved}`);
 				return commandConsumed();
 			}
 			await runtime.session.refreshBaseSystemPrompt();
-			await runtime.output(formatWorkspaceDirectories(runtime, `Removed ${removed}.`));
+			await runtime.output(formatWorkspaceDirectories(runtime, `已移除 ${removed}。`));
 			return commandConsumed();
 		},
 	},
 	{
 		name: "dirs",
-		description: "List this session's workspace directories",
-		acpDescription: "List this session's workspace directories",
+		description: "列出本会话的工作区目录",
+		acpDescription: "列出本会话的工作区目录",
 		handle: async (_command, runtime) => {
 			await runtime.output(formatWorkspaceDirectories(runtime));
 			return commandConsumed();
@@ -790,13 +790,13 @@ export const BUILTIN_LIFECYCLE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> =
 	},
 	{
 		name: "exit",
-		description: "Exit the application",
+		description: "退出应用程序",
 		handleTui: shutdownHandlerTui,
 	},
 	{
 		name: "restart",
 		icon: "restart",
-		description: "Restart omp with the same launch flags, resuming this session",
+		description: "以相同的启动参数重启 omp 并恢复本会话",
 		handleTui: async (_command, runtime) => {
 			runtime.ctx.editor.setText("");
 			await runtime.ctx.restart();

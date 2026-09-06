@@ -198,7 +198,7 @@ type DryBalanceBenchTarget =
 function normalizePositiveInteger(name: string, value: number | undefined, fallback: number): number {
 	const resolved = value ?? fallback;
 	if (!Number.isInteger(resolved) || resolved <= 0) {
-		throw new Error(`--${name} must be a positive integer`);
+		throw new Error(`--${name} 必须是正整数`);
 	}
 	return resolved;
 }
@@ -206,7 +206,7 @@ function normalizePositiveInteger(name: string, value: number | undefined, fallb
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error && error.message) return error.message;
 	const message = String(error);
-	return message ? message : "Unknown error";
+	return message ? message : "未知错误";
 }
 
 function extractAccount(access: {
@@ -218,7 +218,7 @@ function extractAccount(access: {
 	orgName?: string;
 }): string {
 	const base =
-		access.email ?? access.accountId ?? access.projectId ?? access.enterpriseUrl ?? "(unknown oauth account)";
+		access.email ?? access.accountId ?? access.projectId ?? access.enterpriseUrl ?? "（未知 OAuth 账号）";
 	// Two subscriptions (orgs) can share one email — name the org so per-account
 	// bench rows stay tellable apart.
 	const org = access.orgName ?? access.orgId;
@@ -240,7 +240,7 @@ function getBenchTargetKey(access: {
 		access.projectId ??
 		access.enterpriseUrl ??
 		(access.credentialId === undefined ? access.accessToken : `credential:${access.credentialId}`) ??
-		"(unknown oauth account)";
+		"（未知 OAuth 账号）";
 	// Org-qualify: two org-scoped credentials under one email are two distinct
 	// benchmark targets, not duplicates.
 	return access.orgId ? `${base}|org:${access.orgId}` : base;
@@ -255,7 +255,7 @@ function formatBenchIndex(index: number, total: number): string {
 }
 
 function formatBenchAccount(account: string | undefined): string {
-	return account ? sanitizeBenchText(account, BENCH_ACCOUNT_WIDTH) : chalk.dim("(no account)");
+	return account ? sanitizeBenchText(account, BENCH_ACCOUNT_WIDTH) : chalk.dim("（无账号）");
 }
 
 function formatBenchDuration(ms: number): string {
@@ -315,10 +315,10 @@ function renderBenchStatusLine(
 	const prefix = formatBenchIndex(index, total);
 	switch (status.state) {
 		case "waiting":
-			return `${chalk.dim("○")} ${prefix} ${chalk.dim("waiting")}`;
+			return `${chalk.dim("○")} ${prefix} ${chalk.dim("等待中")}`;
 		case "running": {
 			const spinner = BENCH_SPINNER_FRAMES[frame % BENCH_SPINNER_FRAMES.length] ?? "*";
-			return `${chalk.yellow(spinner)} ${prefix} ${formatBenchAccount(status.account)} ${chalk.dim("sending request")}`;
+			return `${chalk.yellow(spinner)} ${prefix} ${formatBenchAccount(status.account)} ${chalk.dim("正在发送请求")}`;
 		}
 		case "success":
 			return renderBenchResultLine(index, total, status.result);
@@ -354,7 +354,7 @@ export function createBenchProgressSink(
 	const width = Number.isFinite(columns) && columns > 0 ? Math.trunc(columns) : 80;
 	const render = (): void => {
 		const lines = [
-			chalk.bold("bench requests"),
+			chalk.bold("bench 请求"),
 			...statuses.map((status, index) => renderBenchStatusLine(status, index, total, frame)),
 		];
 		// Anchor every redraw at column 0 and terminate each row with CRLF: a
@@ -438,7 +438,7 @@ async function runBenchRequest(
 				firstTokenAt = now();
 			}
 			if (event.type === "error") {
-				return { ok: false, account, error: event.error.errorMessage ?? "request failed" };
+				return { ok: false, account, error: event.error.errorMessage ?? "请求失败" };
 			}
 			if (event.type === "done") {
 				message = event.message;
@@ -446,7 +446,7 @@ async function runBenchRequest(
 		}
 		message ??= await stream.result();
 		if (message.stopReason === "error" || message.errorMessage) {
-			return { ok: false, account, error: message.errorMessage ?? "request failed" };
+			return { ok: false, account, error: message.errorMessage ?? "请求失败" };
 		}
 		const durationMs = normalizeBenchMs(message.duration ?? now() - startedAt);
 		const ttftMs = normalizeBenchMs(
@@ -559,14 +559,14 @@ async function resolveDryBalanceModel(
 			preferences,
 		});
 		if (resolved.error) throw new Error(resolved.error);
-		if (!resolved.model) throw new Error(`Model "${modelSelector}" not found`);
+		if (!resolved.model) throw new Error(`未找到模型 "${modelSelector}"`);
 		return { model: resolved.model, warning: resolved.warning };
 	}
 
 	const allowedModels = await resolveAllowedModels(modelRegistry, settings, preferences);
 	if (allowedModels.length === 0) {
 		throw new Error(
-			"No models available. Use --model to select a model or configure enabledModels/default model settings.",
+			"没有可用的模型。请使用 --model 选择模型，或在配置中设置 enabledModels/默认模型。",
 		);
 	}
 
@@ -586,7 +586,7 @@ async function resolveDryBalanceModel(
 	return {
 		model: allowedModels[0],
 		warning:
-			"No allowed model had usable credentials during default resolution; dry-balance will report OAuth failures for the first allowed model.",
+			"默认解析期间没有任何允许的模型具备可用凭据；dry-balance 将对第一个允许的模型报告 OAuth 失败。",
 	};
 }
 
@@ -603,7 +603,7 @@ async function runOneAttempt(
 			baseUrl: model.baseUrl,
 			modelId: model.id,
 		});
-		if (!access) return { ok: false, reason: "no OAuth access resolved" };
+		if (!access) return { ok: false, reason: "未能解析 OAuth 访问" };
 		return { ok: true, account: extractAccount(access) };
 	} catch (error) {
 		return { ok: false, reason: getErrorMessage(error) };
@@ -714,7 +714,7 @@ function summarizeResults(
 }
 
 function formatRows(rows: Array<{ count: number; percent: number; label: string }>): string[] {
-	if (rows.length === 0) return [`  ${chalk.dim("(none)")}`];
+	if (rows.length === 0) return [`  ${chalk.dim("（无）")}`];
 	const maxCountWidth = Math.max(...rows.map(row => row.count.toString().length));
 	return rows.map(row => {
 		const count = row.count.toString().padStart(maxCountWidth);
@@ -736,15 +736,15 @@ export function formatDryBalanceText(summary: DryBalanceSummary): string {
 	}));
 	const lines = [
 		chalk.bold("dry-balance"),
-		`model: ${summary.model}`,
-		`provider: ${summary.provider}`,
-		`samples: ${summary.samples}`,
-		`concurrency: ${summary.concurrency}`,
+		`模型: ${summary.model}`,
+		`提供方: ${summary.provider}`,
+		`样本数: ${summary.samples}`,
+		`并发数: ${summary.concurrency}`,
 		"",
-		`${chalk.green("success")} ${summary.success.total}`,
+		`${chalk.green("成功")} ${summary.success.total}`,
 		...formatRows(accountRows),
 		"",
-		`${summary.failure.total > 0 ? chalk.red("failure") : chalk.dim("failure")} ${summary.failure.total}`,
+		`${summary.failure.total > 0 ? chalk.red("失败") : chalk.dim("失败")} ${summary.failure.total}`,
 		...formatRows(failureRows),
 	];
 	if (summary.bench) {
@@ -762,12 +762,12 @@ export function formatDryBalanceText(summary: DryBalanceSummary): string {
 		lines.push(
 			"",
 			chalk.bold("bench"),
-			`requests: ${summary.bench.total}`,
-			`${chalk.green("success")} ${summary.bench.success.total}`,
-			`avg TTFT: ${avgTtft}`,
-			`avg TPS: ${avgTps}`,
+			`请求数: ${summary.bench.total}`,
+			`${chalk.green("成功")} ${summary.bench.success.total}`,
+			`平均 TTFT: ${avgTtft}`,
+			`平均 TPS: ${avgTps}`,
 			"",
-			`${summary.bench.failure.total > 0 ? chalk.red("failure") : chalk.dim("failure")} ${summary.bench.failure.total}`,
+			`${summary.bench.failure.total > 0 ? chalk.red("失败") : chalk.dim("失败")} ${summary.bench.failure.total}`,
 			...formatRows(benchFailureRows),
 		);
 	}
@@ -809,14 +809,14 @@ export async function runDryBalanceCommand(
 			runtime.settings,
 			randomSessionId,
 		);
-		if (warning) writeStderr(`${chalk.yellow(`Warning: ${warning}`)}\n`);
+		if (warning) writeStderr(`${chalk.yellow(`警告：${warning}`)}\n`);
 		let results: DryBalanceAttemptResult[];
 		let benchResults: DryBalanceBenchResult[] | undefined;
 		let summarySamples = samples;
 		let summaryConcurrency = concurrency;
 		if (isBench) {
 			const targets = await resolveBenchTargets(model, runtime.modelRegistry.authStorage);
-			if (targets.length === 0) throw new Error(`No OAuth accounts resolved for provider ${model.provider}`);
+			if (targets.length === 0) throw new Error(`provider ${model.provider} 没有解析到任何 OAuth 账号`);
 			summarySamples = targets.length;
 			summaryConcurrency = targets.length;
 			const progressWrite = command.flags.json ? writeStderr : writeStdout;

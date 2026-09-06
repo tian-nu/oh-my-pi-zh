@@ -66,24 +66,24 @@ export function parseSearchArgs(args: string[]): SearchCommandArgs | undefined {
 
 export async function runSearchCommand(cmd: SearchCommandArgs): Promise<void> {
 	if (!cmd.query) {
-		process.stderr.write(`${chalk.red("Error: Query is required")}\n`);
+		process.stderr.write(`${chalk.red("错误：必须提供查询内容")}\n`);
 		process.exit(1);
 	}
 
 	if (cmd.provider && !PROVIDERS.includes(cmd.provider)) {
-		process.stderr.write(`${chalk.red(`Error: Unknown provider "${cmd.provider}"`)}\n`);
-		process.stderr.write(`${chalk.dim(`Valid providers: ${PROVIDERS.join(", ")}`)}\n`);
+		process.stderr.write(`${chalk.red(`错误：未知的 provider "${cmd.provider}"`)}\n`);
+		process.stderr.write(`${chalk.dim(`可用 provider：${PROVIDERS.join(", ")}`)}\n`);
 		process.exit(1);
 	}
 
 	if (cmd.recency && !RECENCY_OPTIONS.includes(cmd.recency)) {
-		process.stderr.write(`${chalk.red(`Error: Invalid recency "${cmd.recency}"`)}\n`);
-		process.stderr.write(`${chalk.dim(`Valid recency values: ${RECENCY_OPTIONS.join(", ")}`)}\n`);
+		process.stderr.write(`${chalk.red(`错误：无效的 recency "${cmd.recency}"`)}\n`);
+		process.stderr.write(`${chalk.dim(`可用的 recency 值：${RECENCY_OPTIONS.join(", ")}`)}\n`);
 		process.exit(1);
 	}
 
 	if (cmd.limit !== undefined && Number.isNaN(cmd.limit)) {
-		process.stderr.write(`${chalk.red("Error: --limit must be a number")}\n`);
+		process.stderr.write(`${chalk.red("错误：--limit 必须是数字")}\n`);
 		process.exit(1);
 	}
 
@@ -114,29 +114,29 @@ export async function runSearchCommand(cmd: SearchCommandArgs): Promise<void> {
 }
 
 export function printSearchHelp(): void {
-	process.stdout.write(`${chalk.bold(`${APP_NAME} q`)} - Test web search providers
+	process.stdout.write(`${chalk.bold(`${APP_NAME} q`)} - 测试 web search provider
 
-${chalk.bold("Usage:")}
-  ${APP_NAME} q [options] <query>
-  ${APP_NAME} web-search [options] <query>
+${chalk.bold("用法：")}
+  ${APP_NAME} q [选项] <query>
+  ${APP_NAME} web-search [选项] <query>
 
-${chalk.bold("Arguments:")}
-  query      Search query text
+${chalk.bold("参数：")}
+  query      搜索查询文本
 
-${chalk.bold("Options:")}
-  --provider <name>   Provider: ${PROVIDERS.join(", ")}
-  --recency <value>   Recency filter (when supported): ${RECENCY_OPTIONS.join(", ")}
-  -l, --limit <n>     Max results to return
-  --compact           Render condensed output
-  -h, --help          Show this help
+${chalk.bold("选项：")}
+  --provider <name>   Provider：${PROVIDERS.join(", ")}
+  --recency <value>   时效过滤（在支持时生效）：${RECENCY_OPTIONS.join(", ")}
+  -l, --limit <n>     最多返回的结果数
+  --compact           输出精简结果
+  -h, --help          显示本帮助
 
-${chalk.bold("Query directives:")}
+${chalk.bold("查询指令：")}
   site:/-site:  after:/before: (YYYY-MM-DD)  inurl:  intitle:  filetype:
   "exact phrase"  -term  OR
-  Mapped to native provider filters where available, otherwise applied as a
-  lenient post-filter (a constraint matching nothing is relaxed, not fatal).
+  在 provider 支持时映射为其原生过滤条件，否则作为宽松的后置过滤
+  应用（匹配不到任何结果的约束会被放宽，而不是直接失败）。
 
-${chalk.bold("Examples:")}
+${chalk.bold("示例：")}
   ${APP_NAME} q --provider=exa "what's the color of the sky"
   ${APP_NAME} q --provider=brave --recency=week "latest TypeScript 5.7 changes"
   ${APP_NAME} q 'transformer scaling site:arxiv.org after:2024 -site:reddit.com'

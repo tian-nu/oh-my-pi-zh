@@ -225,7 +225,7 @@ class GitTuiComponent implements Component {
 		this.#pane.patchTarget = this.#patchTargetFor(file);
 		const seq = ++this.#loadSeq;
 		if (!file) {
-			this.#pane.emptyMessage = this.#model.clean && !this.#model.headCommit ? "No commits yet" : "No changes";
+			this.#pane.emptyMessage = this.#model.clean && !this.#model.headCommit ? "暂无提交" : "没有变更";
 			this.#pane.setDocument(null, "empty");
 			this.#ui.requestRender();
 			return;
@@ -298,19 +298,19 @@ class GitTuiComponent implements Component {
 				case "stage":
 					await this.#model.stage(action.selection?.files);
 					this.#setStatus(
-						theme.fg("success", action.selection ? `Staged ${action.selection.label}` : "Staged all changes"),
+						theme.fg("success", action.selection ? `已暂存 ${action.selection.label}` : "已暂存全部变更"),
 					);
 					break;
 				case "unstage":
 					await this.#model.unstage(action.selection?.files);
 					this.#setStatus(
-						theme.fg("success", action.selection ? `Unstaged ${action.selection.label}` : "Unstaged all changes"),
+						theme.fg("success", action.selection ? `已取消暂存 ${action.selection.label}` : "已取消暂存全部变更"),
 					);
 					break;
 				case "stage-ai": {
 					const abort = new AbortController();
 					this.#aiStageAbort = abort;
-					this.#setStatus(theme.fg("accent", `Filtering changes: ${action.prompt}`));
+					this.#setStatus(theme.fg("accent", `正在筛选变更：${action.prompt}`));
 					try {
 						const outcome = await aiStage({
 							cwd: this.#model.cwd,
@@ -322,17 +322,17 @@ class GitTuiComponent implements Component {
 							},
 						});
 						if (outcome.stagedHunks === 0 && outcome.wholeFiles === 0) {
-							this.#setStatus(theme.fg("warning", `No changes matched "${action.prompt}"`));
+							this.#setStatus(theme.fg("warning", `没有匹配 "${action.prompt}" 的变更`));
 						} else {
 							const parts: string[] = [];
-							if (outcome.stagedHunks > 0) parts.push(`${outcome.stagedHunks} of ${outcome.totalHunks} hunks`);
+							if (outcome.stagedHunks > 0) parts.push(`${outcome.stagedHunks}/${outcome.totalHunks} 个代码块`);
 							if (outcome.wholeFiles > 0) {
-								parts.push(`${outcome.wholeFiles} whole file${outcome.wholeFiles === 1 ? "" : "s"}`);
+								parts.push(`${outcome.wholeFiles} 个完整文件`);
 							}
 							this.#setStatus(
 								theme.fg(
 									"success",
-									`Staged ${parts.join(" + ")} (${outcome.matchedFiles}/${outcome.totalFiles} files matched)`,
+									`已暂存 ${parts.join(" + ")}（匹配 ${outcome.matchedFiles}/${outcome.totalFiles} 个文件）`,
 								),
 							);
 						}
@@ -345,7 +345,7 @@ class GitTuiComponent implements Component {
 					const abort = new AbortController();
 					this.#generationAbort = abort;
 					this.#sidebar.setGenerating(true);
-					this.#setStatus(theme.fg("accent", "Generating commit message…"));
+					this.#setStatus(theme.fg("accent", "正在生成提交信息…"));
 					try {
 						const generated = await generateGitCommit({
 							cwd: this.#model.cwd,
@@ -358,12 +358,12 @@ class GitTuiComponent implements Component {
 						this.#sidebar.setGeneratedCommit(generated.commit);
 						this.#setStatus(
 							generated.validationError
-								? theme.fg("warning", `Generated message needs review: ${generated.validationError}`)
+								? theme.fg("warning", `生成的信息需要检查：${generated.validationError}`)
 								: theme.fg(
 										"success",
 										generated.stagedAll
-											? "Staged all changes and generated commit message"
-											: "Generated commit message",
+											? "已暂存全部变更并生成提交信息"
+											: "已生成提交信息",
 									),
 						);
 					} finally {
@@ -376,7 +376,7 @@ class GitTuiComponent implements Component {
 					if (action.stageAll) await this.#model.stage();
 					await this.#model.commit(action.message, { amend: action.amend });
 					this.#sidebar.clearForm();
-					this.#setStatus(theme.fg("success", action.amend ? "Amended commit" : "Created commit"));
+					this.#setStatus(theme.fg("success", action.amend ? "已修正提交" : "已创建提交"));
 					break;
 				}
 			}
@@ -392,7 +392,7 @@ class GitTuiComponent implements Component {
 		if (!hunk.patch) return;
 		if (action === "discard" && this.#pendingDiscard !== hunk.patch) {
 			this.#pendingDiscard = hunk.patch;
-			this.#setStatus(theme.fg("warning", "Discard hunk? Press x (or click) again to confirm"));
+			this.#setStatus(theme.fg("warning", "丢弃此代码块？再次按 x（或点击）确认"));
 			return;
 		}
 		this.#pendingDiscard = null;
@@ -405,7 +405,7 @@ class GitTuiComponent implements Component {
 			this.#setStatus(
 				theme.fg(
 					"success",
-					action === "stage" ? "Staged hunk" : action === "unstage" ? "Unstaged hunk" : "Discarded hunk",
+					action === "stage" ? "已暂存代码块" : action === "unstage" ? "已取消暂存代码块" : "已丢弃代码块",
 				),
 			);
 			await this.#refresh(true);
@@ -423,12 +423,12 @@ class GitTuiComponent implements Component {
 		const intent = action === "stage" ? "apply" : "revert";
 		const patch = buildLineSelectionPatch(doc, span.from, span.to, intent);
 		if (!patch) {
-			this.#setStatus(theme.fg("warning", "Selection contains no changes"));
+			this.#setStatus(theme.fg("warning", "所选内容不包含变更"));
 			return;
 		}
 		if (action === "discard" && this.#pendingDiscard !== patch) {
 			this.#pendingDiscard = patch;
-			this.#setStatus(theme.fg("warning", "Discard selected lines? Press x again to confirm"));
+			this.#setStatus(theme.fg("warning", "丢弃所选行？再次按 x 确认"));
 			return;
 		}
 		this.#pendingDiscard = null;
@@ -443,10 +443,10 @@ class GitTuiComponent implements Component {
 				theme.fg(
 					"success",
 					action === "stage"
-						? "Staged selection"
+						? "已暂存所选行"
 						: action === "unstage"
-							? "Unstaged selection"
-							: "Discarded selection",
+							? "已取消暂存所选行"
+							: "已丢弃所选行",
 				),
 			);
 			await this.#refresh(true);
@@ -500,10 +500,10 @@ class GitTuiComponent implements Component {
 			theme.fg(
 				"dim",
 				this.#whitespace === "off"
-					? "Showing all changes"
+					? "显示全部变更"
 					: this.#whitespace === "whitespace"
-						? "Ignoring whitespace-only line changes"
-						: "Ignoring formatting and import-only changes",
+						? "忽略仅空白的行变更"
+						: "忽略格式与仅 import 的变更",
 			),
 		);
 		this.#rebuildDocument();
@@ -683,18 +683,18 @@ class GitTuiComponent implements Component {
 			const doc = this.#pane.doc;
 			if (doc) row.add(`  ${theme.fg("success", `+${doc.additions}`)} ${theme.fg("error", `−${doc.deletions}`)}`);
 		} else {
-			row.add(theme.fg("dim", "no file selected"));
+			row.add(theme.fg("dim", "未选择文件"));
 		}
 
 		const right = new HitRow();
 		const asset = this.#contents?.kind === "asset" ? this.#contents : null;
 		const contentKind =
-			asset && (asset.old.kind === "image" || asset.new.kind === "image") ? "Media" : asset ? "Binary" : "UTF-8";
+			asset && (asset.old.kind === "image" || asset.new.kind === "image") ? "媒体" : asset ? "二进制" : "UTF-8";
 		right.add(theme.fg("dim", contentKind)).add("  ");
 		if (file?.area === "unstaged")
-			right.button(pill(" Stage File ", theme.getColorHex("toolDiffAdded")), () => this.#stageCurrentFile());
+			right.button(pill(" 暂存文件 ", theme.getColorHex("toolDiffAdded")), () => this.#stageCurrentFile());
 		else if (file?.area === "staged")
-			right.button(pill(" Unstage File ", theme.getColorHex("warning")), () => this.#stageCurrentFile());
+			right.button(pill(" 取消暂存文件 ", theme.getColorHex("warning")), () => this.#stageCurrentFile());
 		right.add(" ").button(softPill(` ${glyphs.close} `), () => this.#done.resolve());
 
 		// The empty middle carries the key hints (or a fresh status message).
@@ -704,8 +704,8 @@ class GitTuiComponent implements Component {
 			theme.fg(
 				"dim",
 				this.#focus === "diff"
-					? "alt+↓/↑ hunk · ]/[ file · shift+↑/↓ select · s/u stage · x discard · v view · c commit · q quit"
-					: "↑/↓ move · ←/→ fold · space stage · enter open · alt+↓/↑ hunk · c commit · t tree · q quit",
+					? "alt+↓/↑ 代码块 · ]/[ 文件 · shift+↑/↓ 选择 · s/u 暂存 · x 丢弃 · v 视图 · c 提交 · q 退出"
+					: "↑/↓ 移动 · ←/→ 折叠 · 空格 暂存 · enter 打开 · alt+↓/↑ 代码块 · c 提交 · t 树 · q 退出",
 			);
 		const free = width - row.width - right.width - 1;
 		const middleText = free > visibleWidth(middle) + 4 ? middle : truncateToWidth(middle, Math.max(0, free - 4));
@@ -730,12 +730,12 @@ class GitTuiComponent implements Component {
 		row.add(" ");
 		const scope =
 			file?.area === "staged"
-				? tintChip(" Staged ", theme.getColorHex("success"))
+				? tintChip(" 已暂存 ", theme.getColorHex("success"))
 				: file?.area === "unstaged"
-					? tintChip(file.kind === "untracked" ? " Untracked " : " Unstaged ", theme.getColorHex("warning"))
+					? tintChip(file.kind === "untracked" ? " 未跟踪 " : " 未暂存 ", theme.getColorHex("warning"))
 					: file
-						? tintChip(` ${this.#model.headCommit?.shortSha ?? "commit"} `, theme.getColorHex("accent"))
-						: theme.fg("dim", ` ${this.#model.branch ?? "detached"} `);
+						? tintChip(` ${this.#model.headCommit?.shortSha ?? "提交"} `, theme.getColorHex("accent"))
+						: theme.fg("dim", ` ${this.#model.branch ?? "游离 HEAD"} `);
 		row.add(scope);
 
 		// Hunk nav + one segmented view control ⟨file│split│inline│hunk⟩,
@@ -803,11 +803,11 @@ export async function showGitOverlay(ui: TUI, options: GitTuiOptions = {}): Prom
 	const cwd = options.cwd ?? process.cwd();
 	const repo = vcs.git(cwd);
 	const root = repo?.info().repoRoot ?? null;
-	if (!root) throw new Error(`Not a git repository: ${cwd}`);
+	if (!root) throw new Error(`不是 git 仓库：${cwd}`);
 	let pinnedSha: string | undefined;
 	if (options.revision) {
 		pinnedSha = (await repo?.resolveRef(options.revision)) ?? undefined;
-		if (!pinnedSha) throw new Error(`Cannot resolve revision: ${options.revision}`);
+		if (!pinnedSha) throw new Error(`无法解析修订版本：${options.revision}`);
 	}
 	const component = new GitTuiComponent(ui, root, pinnedSha);
 	const overlay = ui.showOverlay(component, {

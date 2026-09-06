@@ -87,7 +87,7 @@ export function createLiveBoard(
 		const spinner = SPINNER_FRAMES[frame % SPINNER_FRAMES.length] ?? "*";
 		let lines = render(spinner, width);
 		if (lines.length > maxRows) {
-			lines = [...lines.slice(0, maxRows - 1), `… +${lines.length - (maxRows - 1)} more`];
+			lines = [...lines.slice(0, maxRows - 1), `… 还有 ${lines.length - (maxRows - 1)} 行`];
 		}
 		paint(lines);
 	};

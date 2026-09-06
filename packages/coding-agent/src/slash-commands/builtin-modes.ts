@@ -85,17 +85,17 @@ function applyExtendedContextCommand(settings: Settings, args: string): string |
 	if (!arg || arg === "toggle") {
 		const enabled = !current;
 		settings.set("extendedContext", enabled);
-		return `Extended context ${enabled ? "enabled" : "disabled"}.`;
+		return `扩展上下文已${enabled ? "启用" : "禁用"}。`;
 	}
 	if (arg === "on") {
 		settings.set("extendedContext", true);
-		return "Extended context enabled.";
+		return "扩展上下文已启用。";
 	}
 	if (arg === "off") {
 		settings.set("extendedContext", false);
-		return "Extended context disabled.";
+		return "扩展上下文已禁用。";
 	}
-	if (arg === "status") return `Extended context is ${formatExtendedContextStatus(settings)}.`;
+	if (arg === "status") return `扩展上下文当前为 ${formatExtendedContextStatus(settings)}。`;
 	return undefined;
 }
 
@@ -109,9 +109,9 @@ function formatComputerUseStatus(session: AgentSession): string {
 		maxHeight: session.settings.get("computer.maxHeight"),
 	};
 	return [
-		`Computer use: ${enabled ? "enabled" : "disabled"}`,
-		`prelude: ${active ? "active" : "inactive"}`,
-		`configured: display=${configured.display}, maxWidth=${configured.maxWidth}, maxHeight=${configured.maxHeight}`,
+		`计算机操作：${enabled ? "已启用" : "已禁用"}`,
+		`预加载：${active ? "活跃" : "未激活"}`,
+		`配置：display=${configured.display}, maxWidth=${configured.maxWidth}, maxHeight=${configured.maxHeight}`,
 	].join(" · ");
 }
 
@@ -124,7 +124,7 @@ async function applyComputerUseToggle(session: AgentSession, enable: boolean): P
 	session.settings.override("computer.enabled", enable);
 	if (enable && !session.getEvalPreludes().some(definition => definition.name === "computer")) {
 		session.settings.override("computer.enabled", previous);
-		return "Computer use is unavailable in this session.";
+		return "计算机操作在当前会话不可用。";
 	}
 	try {
 		await session.refreshBaseSystemPrompt();
@@ -133,8 +133,8 @@ async function applyComputerUseToggle(session: AgentSession, enable: boolean): P
 		throw error;
 	}
 	return enable
-		? `Computer use enabled for this session. ${formatComputerUseStatus(session)}`
-		: "Computer use disabled for this session.";
+		? `本会话已启用计算机操作。${formatComputerUseStatus(session)}`
+		: "本会话已禁用计算机操作。";
 }
 
 const AUTOCOMPLETE_DETAIL_LIMIT = 48;
@@ -152,28 +152,28 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "security",
 		icon: "shield",
-		description: "Plan, run, inspect, import, and compare OMP-native security scans",
+		description: "计划、运行、检查、导入和对比 OMP 原生安全扫描",
 		allowArgs: true,
 		acpInputHint: "<plan|scan|status|cancel|scans|show|import|export|validate|compare|disposition>",
 		subcommands: [
-			{ name: "plan", description: "Create an immutable security scan plan" },
-			{ name: "scan", description: "Start a planned or newly planned native scan" },
-			{ name: "status", description: "Show native scan operation status" },
-			{ name: "cancel", description: "Cancel a running native scan" },
-			{ name: "scans", description: "List stored project security scans" },
-			{ name: "show", description: "Render a scan or security:// resource" },
-			{ name: "import", description: "Import SARIF or a Codex Security bundle" },
-			{ name: "export", description: "Export a canonical bundle, SARIF, or report" },
-			{ name: "validate", description: "Validate one finding with OMP-native tools" },
-			{ name: "compare", description: "Compare finding lineage across two scans" },
-			{ name: "disposition", description: "Set a finding disposition with rationale" },
+			{ name: "plan", description: "创建不可变的安全扫描计划" },
+			{ name: "scan", description: "启动已计划或新建计划的原生扫描" },
+			{ name: "status", description: "显示原生扫描操作状态" },
+			{ name: "cancel", description: "取消正在运行的原生扫描" },
+			{ name: "scans", description: "列出已保存的项目安全扫描" },
+			{ name: "show", description: "渲染扫描或 security:// 资源" },
+			{ name: "import", description: "导入 SARIF 或 Codex Security 包" },
+			{ name: "export", description: "导出规范包、SARIF 或报告" },
+			{ name: "validate", description: "用 OMP 原生工具验证单个发现" },
+			{ name: "compare", description: "对比两次扫描间的发现脉络" },
+			{ name: "disposition", description: "为发现设置处置结论及理由" },
 		],
 		handle: handleSecurityCommand,
 	},
 	{
 		name: "settings",
 		icon: "settings",
-		description: "Open settings menu",
+		description: "打开设置菜单",
 		handleTui: (_command, runtime) => {
 			runtime.ctx.showSettingsSelector();
 			runtime.ctx.editor.setText("");
@@ -183,16 +183,16 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 		name: "setup",
 		aliases: ["providers"],
 		icon: "gear",
-		description: "Open provider setup",
+		description: "打开提供商设置",
 		allowArgs: true,
-		subcommands: [{ name: "providers", description: "Configure sign-in and web search providers" }],
+		subcommands: [{ name: "providers", description: "配置登录与网页搜索提供商" }],
 		handleTui: async (command, runtime) => {
 			const args = command.args.trim().toLowerCase();
 			const opensProviders = args === "" || args === "providers";
 			if (opensProviders) {
 				await runtime.ctx.showProviderSetup();
 			} else {
-				runtime.ctx.showWarning(`Usage: /${command.name} [providers]`);
+				runtime.ctx.showWarning(`用法：/${command.name} [providers]`);
 			}
 			runtime.ctx.editor.setText("");
 		},
@@ -200,17 +200,17 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "plan",
 		icon: "plan",
-		description: "Toggle plan mode (agent plans before executing)",
+		description: "切换计划模式（执行前先由 agent 规划）",
 		inlineHint: "[prompt]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
-			if (!runtime.ctx.settings.get("plan.enabled" as SettingPath)) return "Plan: disabled in settings";
+			if (!runtime.ctx.settings.get("plan.enabled" as SettingPath)) return "计划模式：已在设置中禁用";
 			if (runtime.ctx.planModeEnabled) {
 				const planFile = runtime.ctx.planModePlanFilePath;
-				return `Plan: on${planFile ? ` (${path.basename(planFile)})` : ""}`;
+				return `计划模式：开${planFile ? ` (${path.basename(planFile)})` : ""}`;
 			}
-			if (runtime.ctx.goalModeEnabled) return "Plan: blocked by goal mode";
-			return "Plan: off";
+			if (runtime.ctx.goalModeEnabled) return "计划模式：被目标模式阻止";
+			return "计划模式：关";
 		},
 		handleTui: async (command, runtime) => {
 			await runWithDetachedModeDraft(command, runtime, () =>
@@ -221,9 +221,9 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "plan-review",
 		icon: "plan",
-		description: "Re-open the plan review for the latest plan (plan mode only)",
+		description: "重新打开最近一次计划的评审（仅计划模式）",
 		getTuiAutocompleteDescription: runtime =>
-			runtime.ctx.planModeEnabled ? "Plan review: available" : "Plan review: plan mode inactive",
+			runtime.ctx.planModeEnabled ? "计划评审：可用" : "计划评审：计划模式未开启",
 		handleTui: async (_command, runtime) => {
 			await runtime.ctx.openPlanReview();
 			runtime.ctx.editor.setText("");
@@ -232,14 +232,14 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "vibe",
 		icon: "wave",
-		description: "Toggle vibe mode (direct persistent fast/good worker sessions; read-only toolset)",
+		description: "切换 Vibe 模式（直接的持久 fast/good worker 会话；只读工具集）",
 		inlineHint: "[prompt]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
-			if (runtime.ctx.vibeModeEnabled) return "Vibe: on";
-			if (runtime.ctx.planModeEnabled) return "Vibe: blocked by plan mode";
-			if (runtime.ctx.goalModeEnabled) return "Vibe: blocked by goal mode";
-			return "Vibe: off";
+			if (runtime.ctx.vibeModeEnabled) return "Vibe：开";
+			if (runtime.ctx.planModeEnabled) return "Vibe：被计划模式阻止";
+			if (runtime.ctx.goalModeEnabled) return "Vibe：被目标模式阻止";
+			return "Vibe：关";
 		},
 		handleTui: async (command, runtime) => {
 			await runWithDetachedModeDraft(command, runtime, () =>
@@ -250,22 +250,22 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "goal",
 		icon: "goal",
-		description: "Toggle goal mode (persistent autonomous objective for this session)",
+		description: "切换目标模式（本会话的持久自主目标）",
 		subcommands: [
-			{ name: "set", description: "Set or replace the goal", usage: "<objective>" },
-			{ name: "show", description: "Show current goal details" },
-			{ name: "pause", description: "Pause the current goal" },
-			{ name: "resume", description: "Resume a paused goal" },
-			{ name: "drop", description: "Drop the current goal" },
-			{ name: "budget", description: "Adjust the token budget", usage: "<N|off>" },
+			{ name: "set", description: "设置或替换当前目标", usage: "<objective>" },
+			{ name: "show", description: "查看当前目标详情" },
+			{ name: "pause", description: "暂停当前目标" },
+			{ name: "resume", description: "恢复已暂停的目标" },
+			{ name: "drop", description: "放弃当前目标" },
+			{ name: "budget", description: "调整 token 预算", usage: "<N|off>" },
 		],
 		inlineHint: "[objective]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
-			if (!runtime.ctx.settings.get("goal.enabled" as SettingPath)) return "Goal: disabled in settings";
-			if (runtime.ctx.planModeEnabled) return "Goal: blocked by plan mode";
+			if (!runtime.ctx.settings.get("goal.enabled" as SettingPath)) return "目标模式：已在设置中禁用";
+			if (runtime.ctx.planModeEnabled) return "目标模式：被计划模式阻止";
 			const state = runtime.ctx.session.getGoalModeState();
-			return state ? `Goal: ${state.goal.status} (${shortDetail(state.goal.objective)})` : "Goal: off";
+			return state ? `目标模式：${state.goal.status}（${shortDetail(state.goal.objective)}）` : "目标模式：关";
 		},
 		handleTui: async (command, runtime) => {
 			await runWithDetachedModeDraft(command, runtime, () =>
@@ -276,7 +276,7 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "guided-goal",
 		icon: "compass",
-		description: "Have the agent interview you in chat, then set up goal mode",
+		description: "让 agent 在对话中采访你，然后配置目标模式",
 		inlineHint: "[rough objective]",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -289,15 +289,15 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 		name: "loop",
 		icon: "loop",
 		description:
-			"Toggle loop mode. While enabled, the next prompt you send re-submits after every yield. Esc cancels the current iteration; /loop again to disable.",
+			"切换循环模式。启用后，你发送的下一条提示会在每次让出（yield）后自动重新提交。Esc 取消当前迭代；再次输入 /loop 关闭。",
 		inlineHint: "[count|duration] [prompt]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
-			if (!runtime.ctx.loopModeEnabled) return "Loop: off";
-			if (runtime.ctx.loopModePaused) return "Loop: paused";
-			if (runtime.ctx.loopLimit) return `Loop: on (${describeLoopLimitRuntime(runtime.ctx.loopLimit)})`;
-			if (runtime.ctx.loopPrompt) return "Loop: on (repeating prompt)";
-			return "Loop: on (waiting for next prompt)";
+			if (!runtime.ctx.loopModeEnabled) return "循环：关";
+			if (runtime.ctx.loopModePaused) return "循环：已暂停";
+			if (runtime.ctx.loopLimit) return `循环：开（${describeLoopLimitRuntime(runtime.ctx.loopLimit)}）`;
+			if (runtime.ctx.loopPrompt) return "循环：开（重复提示）";
+			return "循环：开（等待下一条提示）";
 		},
 		handleTui: async (command, runtime) => {
 			const prompt = await runtime.ctx.handleLoopCommand(command.args);
@@ -310,7 +310,7 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "queue",
 		icon: "inbox",
-		description: "Queue a message for after the agent yields",
+		description: "将消息排入队列，待 agent 让出后发送",
 		inlineHint: "<message>",
 		allowArgs: true,
 		handleTui: async (command, runtime) => {
@@ -321,11 +321,11 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 		name: "model",
 		aliases: ["models"],
 		icon: "model",
-		description: "Switch model for this session",
-		acpDescription: "Show current model selection",
+		description: "切换本会话的模型",
+		acpDescription: "显示当前模型选择",
 		getTuiAutocompleteDescription: runtime => {
 			const model = runtime.ctx.session.model;
-			return model ? `Model: ${model.provider}/${model.id}` : "Model: none selected";
+			return model ? `Model: ${model.provider}/${model.id}` : "模型：未选择";
 		},
 		handle: async (command, runtime) => {
 			if (command.args) {
@@ -334,25 +334,25 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 				const match = resolved.model;
 				if (!match) {
 					return usage(
-						`Unknown model: ${selector}. Use ACP \`session/setModel\` for picker-driven selection or list available models with /model.`,
+						`未知模型：${selector}。请使用 ACP \`session/setModel\` 通过选择器选择，或用 /model 列出可用模型。`,
 						runtime,
 					);
 				}
 				try {
 					await runtime.session.setModel(match);
 					if (resolved.thinkingLevel !== undefined) runtime.session.setThinkingLevel(resolved.thinkingLevel);
-					await runtime.output(`Model set to ${match.provider}/${match.id}.`);
+					await runtime.output(`模型已设置为 ${match.provider}/${match.id}。`);
 					await runtime.notifyTitleChanged?.();
 					await runtime.notifyConfigChanged?.();
 					return commandConsumed();
 				} catch (err) {
-					return usage(`Failed to set model: ${errorMessage(err)}`, runtime);
+					return usage(`设置模型失败：${errorMessage(err)}`, runtime);
 				}
 			}
 
 			const model = runtime.session.model;
 			await runtime.output(
-				model ? `Current model: ${model.provider}/${model.id}` : "No model is currently selected.",
+				model ? `当前模型：${model.provider}/${model.id}` : "当前未选择模型。",
 			);
 			return commandConsumed();
 		},
@@ -364,34 +364,34 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "switch",
 		icon: "swap",
-		description: "Switch model for this session (same as alt+p); accepts fuzzy ids, provider/id, @role, :level",
-		acpDescription: "Switch model for this session only",
+		description: "切换本会话的模型（同 alt+p）；支持模糊 id、provider/id、@role、:level",
+		acpDescription: "仅为当前会话切换模型",
 		acpInputHint: "[model]",
 		inlineHint: "[model]",
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime => {
 			const model = runtime.ctx.session.model;
-			return model ? `Model: ${model.provider}/${model.id}` : "Model: none selected";
+			return model ? `Model: ${model.provider}/${model.id}` : "模型：未选择";
 		},
 		handle: async (command, runtime) => {
 			const selector = command.args.trim();
 			if (!selector) {
 				const model = runtime.session.model;
 				await runtime.output(
-					model ? `Current model: ${model.provider}/${model.id}` : "No model is currently selected.",
+					model ? `当前模型：${model.provider}/${model.id}` : "当前未选择模型。",
 				);
 				return commandConsumed();
 			}
 			const resolved = resolveSessionModelSelector(selector, runtime.session, runtime.settings);
-			if (!resolved.model) return usage(`Unknown model: ${selector}`, runtime);
+			if (!resolved.model) return usage(`未知模型：${selector}`, runtime);
 			try {
 				await runtime.session.setModelTemporary(resolved.model, resolved.thinkingLevel);
-				await runtime.output(`Session-only model: ${formatModelString(resolved.model)}.`);
+				await runtime.output(`仅本会话生效的模型：${formatModelString(resolved.model)}。`);
 				await runtime.notifyTitleChanged?.();
 				await runtime.notifyConfigChanged?.();
 				return commandConsumed();
 			} catch (err) {
-				return usage(`Failed to switch model: ${errorMessage(err)}`, runtime);
+				return usage(`切换模型失败：${errorMessage(err)}`, runtime);
 			}
 		},
 		handleTui: async (command, runtime) => {
@@ -403,7 +403,7 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 			}
 			const resolved = resolveSessionModelSelector(selector, runtime.ctx.session, runtime.ctx.settings);
 			if (!resolved.model) {
-				runtime.ctx.showError(`Unknown model: ${selector}`);
+				runtime.ctx.showError(`未知模型：${selector}`);
 				return;
 			}
 			if (resolved.warning) runtime.ctx.showStatus(resolved.warning);
@@ -413,92 +413,90 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 	{
 		name: "fast",
 		icon: "fast",
-		description: "Toggle priority service tier (OpenAI service_tier=priority, Anthropic speed=fast)",
-		acpDescription: "Toggle fast mode",
+		description: "切换优先服务层级（OpenAI service_tier=priority，Anthropic speed=fast）",
+		acpDescription: "切换快速模式",
 		acpInputHint: "[on|off|status]",
 		subcommands: [
-			{ name: "on", description: "Enable fast mode" },
-			{ name: "off", description: "Disable fast mode" },
-			{ name: "status", description: "Show fast mode status" },
+			{ name: "on", description: "启用快速模式" },
+			{ name: "off", description: "禁用快速模式" },
+			{ name: "status", description: "显示快速模式状态" },
 		],
 		allowArgs: true,
-		getTuiAutocompleteDescription: runtime => `Fast: ${formatFastModeStatus(runtime.ctx.session)}`,
+		getTuiAutocompleteDescription: runtime => `快速模式：${formatFastModeStatus(runtime.ctx.session)}`,
 		handle: async (command, runtime) => {
 			const arg = command.args.toLowerCase();
 			if (!arg || arg === "toggle") {
 				const enabled = runtime.session.toggleFastMode();
-				await runtime.output(`Fast mode ${enabled ? "enabled" : "disabled"}.`);
+				await runtime.output(`快速模式已${enabled ? "启用" : "禁用"}。`);
 				return commandConsumed();
 			}
 			if (arg === "on") {
 				const supported = runtime.session.setFastMode(true);
-				await runtime.output(supported ? "Fast mode enabled." : "Fast mode is unavailable for the current model.");
+				await runtime.output(supported ? "快速模式已启用。" : "当前模型不支持快速模式。");
 				return commandConsumed();
 			}
 			if (arg === "off") {
 				runtime.session.setFastMode(false);
-				await runtime.output("Fast mode disabled.");
+				await runtime.output("快速模式已禁用。");
 				return commandConsumed();
 			}
 			if (arg === "status") {
-				await runtime.output(`Fast mode is ${formatFastModeStatus(runtime.session)}.`);
+				await runtime.output(`快速模式当前为 ${formatFastModeStatus(runtime.session)}。`);
 				return commandConsumed();
 			}
-			return usage("Usage: /fast [on|off|status]", runtime);
+			return usage("用法：/fast [on|off|status]", runtime);
 		},
 		handleTui: (command, runtime) => {
 			const arg = command.args.trim().toLowerCase();
 			if (!arg || arg === "toggle") {
 				const enabled = runtime.ctx.session.toggleFastMode();
 				refreshStatusLine(runtime.ctx);
-				runtime.ctx.showStatus(`Fast mode ${enabled ? "enabled" : "disabled"}.`);
+				runtime.ctx.showStatus(`快速模式已${enabled ? "启用" : "禁用"}。`);
 				runtime.ctx.editor.setText("");
 				return;
 			}
 			if (arg === "on") {
 				const supported = runtime.ctx.session.setFastMode(true);
 				refreshStatusLine(runtime.ctx);
-				runtime.ctx.showStatus(
-					supported ? "Fast mode enabled." : "Fast mode is unavailable for the current model.",
-				);
+				runtime.ctx.showStatus(supported ? "快速模式已启用。" : "当前模型不支持快速模式。");
 				runtime.ctx.editor.setText("");
 				return;
 			}
 			if (arg === "off") {
 				runtime.ctx.session.setFastMode(false);
 				refreshStatusLine(runtime.ctx);
-				runtime.ctx.showStatus("Fast mode disabled.");
+				runtime.ctx.showStatus("快速模式已禁用。");
 				runtime.ctx.editor.setText("");
 				return;
 			}
 			if (arg === "status") {
-				runtime.ctx.showStatus(`Fast mode is ${formatFastModeStatus(runtime.ctx.session)}.`);
+				runtime.ctx.showStatus(`快速模式当前为 ${formatFastModeStatus(runtime.ctx.session)}。`);
 				runtime.ctx.editor.setText("");
 				return;
 			}
-			runtime.ctx.showStatus("Usage: /fast [on|off|status]");
+			runtime.ctx.showStatus("用法：/fast [on|off|status]");
 			runtime.ctx.editor.setText("");
 		},
 	},
 	{
 		name: "skillful",
 		icon: "compass",
-		description: "Toggle listing available skills in the system prompt (session only)",
-		acpDescription: "Toggle skill listing",
+		description: "切换是否在系统提示中列出可用技能（仅本会话）",
+		acpDescription: "切换技能列表",
 		acpInputHint: "[on|off|status]",
 		subcommands: [
-			{ name: "on", description: "List skills in the prompt for this session" },
-			{ name: "off", description: "Omit the skills listing for this session" },
-			{ name: "status", description: "Show skill listing status" },
+			{ name: "on", description: "在本会话提示中列出技能" },
+			{ name: "off", description: "在本会话中省略技能列表" },
+			{ name: "status", description: "显示技能列表状态" },
 		],
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime =>
-			`Skill listing: ${runtime.ctx.session.settings.get("skillful") ? "on" : "off"}`,
+			`技能列表：${runtime.ctx.session.settings.get("skillful") ? "开" : "关"}`,
 		handle: async (command, runtime) => {
 			const arg = command.args.trim().toLowerCase();
 			if (arg === "status") {
 				await runtime.output(
-					`Skill listing: ${runtime.session.settings.get("skillful") ? "on" : "off"} (session override; default from the skillful setting).`,
+					`技能列表：${runtime.session.settings.get("skillful") ? "开" : "关"}（会话级覆盖；默认取 skillful 设置）。`,
 				);
 				return commandConsumed();
 			}
@@ -509,15 +507,15 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 						: arg === "off"
 							? await runtime.session.setSkillful(false)
 							: await runtime.session.toggleSkillful();
-				await runtime.output(`Skill listing ${enabled ? "enabled" : "disabled"} for this session.`);
+				await runtime.output(`本会话技能列表已${enabled ? "启用" : "禁用"}。`);
 				return commandConsumed();
 			}
-			return usage("Usage: /skillful [on|off|status]", runtime);
+			return usage("用法：/skillful [on|off|status]", runtime);
 		},
 		handleTui: async (command, runtime) => {
 			const arg = command.args.trim().toLowerCase();
 			if (arg === "status") {
-				runtime.ctx.showStatus(`Skill listing: ${runtime.ctx.session.settings.get("skillful") ? "on" : "off"}.`);
+				runtime.ctx.showStatus(`技能列表：${runtime.ctx.session.settings.get("skillful") ? "开" : "关"}`);
 				runtime.ctx.editor.setText("");
 				return;
 			}
@@ -528,55 +526,55 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 						: arg === "off"
 							? await runtime.ctx.session.setSkillful(false)
 							: await runtime.ctx.session.toggleSkillful();
-				runtime.ctx.showStatus(`Skill listing ${enabled ? "enabled" : "disabled"} for this session.`);
+				runtime.ctx.showStatus(`本会话技能列表已${enabled ? "启用" : "禁用"}。`);
 				runtime.ctx.editor.setText("");
 				return;
 			}
-			runtime.ctx.showStatus("Usage: /skillful [on|off|status]");
+			runtime.ctx.showStatus("用法：/skillful [on|off|status]");
 			runtime.ctx.editor.setText("");
 		},
 	},
 	{
 		name: "extended-context",
 		icon: "expand",
-		description: "Toggle premium long-context windows",
-		acpDescription: "Toggle extended context",
+		description: "切换加购的长上下文窗口",
+		acpDescription: "切换扩展上下文",
 		acpInputHint: "[on|off|status]",
 		subcommands: [
-			{ name: "on", description: "Enable premium long-context windows" },
-			{ name: "off", description: "Use standard-pricing context windows" },
-			{ name: "status", description: "Show extended context status" },
+			{ name: "on", description: "启用加购长上下文窗口" },
+			{ name: "off", description: "使用标准定价的上下文窗口" },
+			{ name: "status", description: "显示扩展上下文状态" },
 		],
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime =>
-			`Extended context: ${formatExtendedContextStatus(runtime.ctx.settings)}`,
+			`扩展上下文：${formatExtendedContextStatus(runtime.ctx.settings)}`,
 		handle: async (command, runtime) => {
 			const output = applyExtendedContextCommand(runtime.settings, command.args);
-			if (!output) return usage("Usage: /extended-context [on|off|status]", runtime);
+			if (!output) return usage("用法：/extended-context [on|off|status]", runtime);
 			await runtime.output(output);
 			return commandConsumed();
 		},
 		handleTui: (command, runtime) => {
 			const output = applyExtendedContextCommand(runtime.ctx.settings, command.args);
 			refreshStatusLine(runtime.ctx);
-			runtime.ctx.showStatus(output ?? "Usage: /extended-context [on|off|status]");
+			runtime.ctx.showStatus(output ?? "用法：/extended-context [on|off|status]");
 			runtime.ctx.editor.setText("");
 		},
 	},
 	{
 		name: "computer",
 		icon: "computer",
-		description: "Toggle the native computer-use eval prelude for this session",
-		acpDescription: "Toggle computer use",
+		description: "切换本会话的原生计算机操作 eval 预加载",
+		acpDescription: "切换计算机操作",
 		acpInputHint: "[on|off|status]",
 		subcommands: [
-			{ name: "on", description: "Enable computer use for this session" },
-			{ name: "off", description: "Disable computer use for this session" },
-			{ name: "status", description: "Show computer use status" },
+			{ name: "on", description: "本会话启用计算机操作" },
+			{ name: "off", description: "本会话禁用计算机操作" },
+			{ name: "status", description: "显示计算机操作状态" },
 		],
 		allowArgs: true,
 		getTuiAutocompleteDescription: runtime =>
-			`Computer: ${runtime.ctx.session.settings.get("computer.enabled") ? "on" : "off"}`,
+			`计算机操作：${runtime.ctx.session.settings.get("computer.enabled") ? "开" : "关"}`,
 		handle: async (command, runtime) => {
 			const arg = command.args.trim().toLowerCase();
 			if (arg === "status") {
@@ -588,7 +586,7 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 				await runtime.output(await applyComputerUseToggle(runtime.session, enable));
 				return commandConsumed();
 			}
-			return usage("Usage: /computer [on|off|status]", runtime);
+			return usage("用法：/computer [on|off|status]", runtime);
 		},
 		handleTui: async (command, runtime) => {
 			const arg = command.args.trim().toLowerCase();
@@ -604,15 +602,15 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 				runtime.ctx.editor.setText("");
 				return;
 			}
-			runtime.ctx.showStatus("Usage: /computer [on|off|status]");
+			runtime.ctx.showStatus("用法：/computer [on|off|status]");
 			runtime.ctx.editor.setText("");
 		},
 	},
 	{
 		name: "prewalk",
 		icon: "prewalk",
-		description: "Switch to a fast/cheap model at the next action (works even without --prewalk)",
-		acpDescription: "Prewalk at the next action",
+		description: "在下一个操作切换到快速/廉价模型（无需 --prewalk 也可使用）",
+		acpDescription: "在下一个操作执行 Prewalk",
 		handle: async (_command, runtime) => {
 			const rolePattern = expandRoleAlias("@smol", runtime.settings);
 			const resolved = resolveCliModel({
@@ -621,15 +619,15 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
 				preferences: getModelMatchPreferences(runtime.settings),
 			});
 			if (resolved.error || !resolved.model) {
-				return usage(resolved.error ?? `Model "${rolePattern}" not found`, runtime);
+				return usage(resolved.error ?? `未找到模型 "${rolePattern}"`, runtime);
 			}
 			if (!runtime.session.modelRegistry.hasConfiguredAuth(resolved.model)) {
-				return usage(`No API key for ${resolved.model.provider}/${resolved.model.id}`, runtime);
+				return usage(`${resolved.model.provider}/${resolved.model.id} 缺少 API 密钥`, runtime);
 			}
 			const armed = runtime.session.armPrewalk(resolved.model, resolved.thinkingLevel);
 			if (armed) {
 				await runtime.output(
-					`Prewalk on: switching to ${resolved.model.provider}/${resolved.model.id} at the next edit/write (todo-gated).`,
+					`Prewalk 已开启：将在下一次编辑/写入时切换到 ${resolved.model.provider}/${resolved.model.id}（受 todo 门控）。`,
 				);
 			}
 			return commandConsumed();

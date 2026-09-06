@@ -413,10 +413,10 @@ function configChecks(config: ImagesResolvedConfig, deps: ImagesCliDependencies)
 	checks.push({
 		name: "enabled",
 		severity: config.enabled ? "ok" : "error",
-		detail: config.enabled ? "Image publication is enabled" : "images.urls.enabled is false",
+		detail: config.enabled ? "图片发布已启用" : "images.urls.enabled 为 false",
 	});
 	if (config.orderedBackends.length === 0) {
-		checks.push({ name: "backends", severity: "error", detail: "No image publication backends are configured" });
+		checks.push({ name: "backends", severity: "error", detail: "未配置任何图片发布后端" });
 	}
 	const configByKind = new Map(config.configs.map(item => [item.kind, item]));
 	for (const backend of config.orderedBackends) {
@@ -459,8 +459,8 @@ function configChecks(config: ImagesResolvedConfig, deps: ImagesCliDependencies)
 				severity: missing.length === 0 && runtimeError === undefined ? "ok" : "error",
 				detail:
 					missing.length > 0
-						? `Missing required fields: ${missing.join(", ")}`
-						: (runtimeError ?? "Required configuration is present"),
+						? `缺少必需字段: ${missing.join(", ")}`
+						: (runtimeError ?? "必需配置已就绪"),
 			});
 		}
 		const binary = BINARY_BY_DESTINATION[backend];
@@ -469,7 +469,7 @@ function configChecks(config: ImagesResolvedConfig, deps: ImagesCliDependencies)
 			checks.push({
 				name: `binary:${backend}`,
 				severity: found ? "ok" : "error",
-				detail: found ? `${binary} is available` : `${binary} is not on PATH`,
+				detail: found ? `${binary} 可用` : `${binary} 不在 PATH 中`,
 			});
 		}
 	}
@@ -491,13 +491,13 @@ async function diskChecks(config: ImagesResolvedConfig): Promise<ImagesDoctorChe
 			checks.push({
 				name: "disk",
 				severity: "ok",
-				detail: `Cache directory is readable and writable: ${directory}`,
+				detail: `缓存目录可读可写: ${directory}`,
 			});
 		} catch {
 			checks.push({
 				name: "disk",
 				severity: "warn",
-				detail: `Cache directory is absent or not writable: ${directory}`,
+				detail: `缓存目录不存在或不可写: ${directory}`,
 			});
 		}
 	}
@@ -522,14 +522,14 @@ async function collectDoctor(
 				severity: authenticated.length > 0 ? "ok" : "error",
 				detail:
 					authenticated.length > 0
-						? `Authentication is available for: ${authenticated.join(", ")}`
-						: "No OpenAI, Anthropic, or Google authentication is available",
+						? `以下提供商认证可用: ${authenticated.join(", ")}`
+						: "没有可用的 OpenAI、Anthropic 或 Google 认证",
 			});
 		} catch {
 			checks.push({
 				name: "config:provider-files",
 				severity: "warn",
-				detail: "Provider authentication storage could not be inspected",
+				detail: "无法检查提供商认证存储",
 			});
 		} finally {
 			storage?.close();
@@ -537,7 +537,7 @@ async function collectDoctor(
 	}
 	const daemon = await deps.queryDoctor(projectDir, { probe: true });
 	if (!daemon) {
-		checks.push({ name: "daemon", severity: "warn", detail: "Image daemon is stopped or unreachable" });
+		checks.push({ name: "daemon", severity: "warn", detail: "图片守护进程已停止或无法访问" });
 	} else {
 		for (const check of daemon.checks) {
 			checks.push({
@@ -565,7 +565,7 @@ async function collectProbe(
 			projectDir,
 			daemonState: "stopped",
 			ok: false,
-			detail: config.enabled ? "No URL backend is configured" : "Image publication is disabled",
+			detail: config.enabled ? "未配置任何 URL 后端" : "图片发布已禁用",
 		};
 	}
 	const response = await deps.queryProbe(projectDir, first, { timeoutMs });
@@ -577,7 +577,7 @@ async function collectProbe(
 			backend: first.kind,
 			daemonState: "stopped",
 			ok: false,
-			detail: "Image daemon could not be started or reached",
+			detail: "图片守护进程无法启动或无法访问",
 		};
 	}
 	return {
@@ -709,26 +709,26 @@ async function collectPurge(
 
 function renderStatus(result: ImagesStatusResult): string {
 	const lines = [
-		`Image backends: ${result.backends.length > 0 ? result.backends.join(" → ") : "none"}`,
-		`Enabled: ${result.enabled ? "yes" : "no"}`,
-		`Daemon: ${result.daemon.state}${result.daemon.baseUrl ? ` (${result.daemon.baseUrl})` : ""}`,
+		`图片后端: ${result.backends.length > 0 ? result.backends.join(" → ") : "无"}`,
+		`已启用: ${result.enabled ? "是" : "否"}`,
+		`守护进程: ${result.daemon.state}${result.daemon.baseUrl ? ` (${result.daemon.baseUrl})` : ""}`,
 	];
 	const metrics = result.daemon.metrics;
 	if (metrics) {
 		lines.push(
-			`Blobs: ${metrics.activeBlobs} active (${metrics.eagerBlobs} eager, ${metrics.lazyBlobs} lazy)`,
-			`Storage: ${formatBytes(metrics.residentBytes)} resident, ${formatBytes(metrics.diskBytes)} disk`,
-			`Fetch: ${metrics.hits} hits, ${metrics.misses} misses, ${metrics.duplicateTokenGets} duplicate GETs`,
-			`Bytes served: ${formatBytes(metrics.bytesServed)}`,
+			`Blob: ${metrics.activeBlobs} 个活跃 (${metrics.eagerBlobs} 个 eager, ${metrics.lazyBlobs} 个 lazy)`,
+			`存储: 常驻 ${formatBytes(metrics.residentBytes)}, 磁盘 ${formatBytes(metrics.diskBytes)}`,
+			`获取: ${metrics.hits} 次命中, ${metrics.misses} 次未命中, ${metrics.duplicateTokenGets} 次重复 GET`,
+			`已发送字节: ${formatBytes(metrics.bytesServed)}`,
 		);
 	}
 	lines.push(
-		`Bytes saved: ${formatBytes(result.savings.savedBytes)} (${formatBytes(result.savings.inlineBytes)} inline → ${formatBytes(result.savings.referenceBytes)} references)`,
-		`Provider files: ${result.providerFiles.entries} active, ${formatBytes(result.providerFiles.bytes)}`,
+		`节省字节: ${formatBytes(result.savings.savedBytes)} (${formatBytes(result.savings.inlineBytes)} 内联 → ${formatBytes(result.savings.referenceBytes)} 引用)`,
+		`提供商文件: ${result.providerFiles.entries} 个活跃, ${formatBytes(result.providerFiles.bytes)}`,
 	);
 	for (const event of result.daemon.recentFetches ?? []) {
 		lines.push(
-			`Recent fetch: ${event.fetcherId ?? "unknown"}; corroborated=${event.corroborated ? "yes" : "no"}; ${event.method} ${event.found ? "hit" : "miss"}`,
+			`最近获取: ${event.fetcherId ?? "未知"}; corroborated=${event.corroborated ? "是" : "否"}; ${event.method} ${event.found ? "命中" : "未命中"}`,
 		);
 	}
 	return `${lines.join("\n")}\n`;
@@ -736,30 +736,30 @@ function renderStatus(result: ImagesStatusResult): string {
 
 function renderDoctor(result: ImagesDoctorResult): string {
 	const lines = result.checks.map(check => `[${check.severity.toUpperCase()}] ${check.name}: ${check.detail}`);
-	lines.push(result.healthy ? "Image diagnostics passed." : "Image diagnostics found errors.");
+	lines.push(result.healthy ? "图片诊断通过。" : "图片诊断发现错误。");
 	return `${lines.join("\n")}\n`;
 }
 
 function renderProbe(result: ImagesProbeResult): string {
 	const duration = result.durationMs === undefined ? "" : ` in ${result.durationMs} ms`;
-	return `Image probe ${result.ok ? "passed" : "failed"}${duration}: ${result.detail}\n`;
+	return `图片探测${result.ok ? "通过" : "失败"}${duration}: ${result.detail}\n`;
 }
 
 function renderPurge(result: ImagesPurgeResult): string {
 	const daemonSelected = result.daemon?.purgedBlobs ?? 0;
 	const daemonBytes = result.daemon?.reclaimedBytes ?? 0;
 	const lines = [
-		result.applied ? "Image purge applied." : "Image purge dry-run; pass --apply to delete.",
-		`Daemon blobs: ${daemonSelected}, ${formatBytes(daemonBytes)}`,
-		`Provider files: ${result.providerFiles.selected} selected, ${result.providerFiles.deleted} deleted, ${formatBytes(result.providerFiles.bytes)}`,
+		result.applied ? "图片清理已执行。" : "图片清理为试运行；传入 --apply 以执行删除。",
+		`守护进程 blob: ${daemonSelected}, ${formatBytes(daemonBytes)}`,
+		`提供商文件: 选中 ${result.providerFiles.selected}, 已删除 ${result.providerFiles.deleted}, ${formatBytes(result.providerFiles.bytes)}`,
 	];
 	if (result.providerFiles.skippedAuth > 0) {
 		lines.push(
-			`Skipped ${result.providerFiles.skippedAuth} provider file(s): matching authentication was unavailable.`,
+			`已跳过 ${result.providerFiles.skippedAuth} 个提供商文件: 无法找到匹配的认证。`,
 		);
 	}
-	for (const error of result.daemon?.errors ?? []) lines.push(`Daemon error: ${error}`);
-	for (const error of result.providerFiles.errors) lines.push(`Provider error: ${error}`);
+	for (const error of result.daemon?.errors ?? []) lines.push(`守护进程错误: ${error}`);
+	for (const error of result.providerFiles.errors) lines.push(`提供商错误: ${error}`);
 	return `${lines.join("\n")}\n`;
 }
 
@@ -787,7 +787,7 @@ export async function runImagesCommand(
 	const projectDir = path.resolve(args.flags.dir ?? process.cwd());
 	const timeout = args.flags.timeout;
 	if (timeout !== undefined && (!Number.isSafeInteger(timeout) || timeout <= 0)) {
-		result = { action: args.action, exitCode: 2, error: "--timeout must be a positive integer" };
+		result = { action: args.action, exitCode: 2, error: "--timeout 必须是正整数" };
 	} else {
 		try {
 			const settings = await deps.loadSettings(projectDir);

@@ -109,11 +109,11 @@ export async function addWorktree(options: AddWorktreeOptions): Promise<void> {
 	const subject = commit.message.split("\n", 1)[0];
 	if (!options.quiet) {
 		const preparation = createdBranch
-			? `new branch '${createdBranch}'`
+			? `新分支 '${createdBranch}'`
 			: detach
-				? `detached HEAD ${shortSha}`
-				: `checking out '${ref}'`;
-		console.log(`Preparing worktree (${preparation})`);
+				? `分离 HEAD ${shortSha}`
+				: `正在检出 '${ref}'`;
+		console.log(`正在准备工作树 (${preparation})`);
 	}
 	const result = await repository.worktreeAdd(worktreePath, ref, {
 		detach,
@@ -121,13 +121,13 @@ export async function addWorktree(options: AddWorktreeOptions): Promise<void> {
 		backend: parseIsolationBackend(settings.get("isolation.backend")),
 	});
 	if (!options.quiet) {
-		console.log(`HEAD is now at ${shortSha} ${subject}`);
+		console.log(`HEAD 目前位于 ${shortSha} ${subject}`);
 		if (result.clonedWith != null) {
-			console.log(`Cloned from ${repository.info().repoRoot} via ${formatIsolationBackend(result.clonedWith)}`);
+			console.log(`已从 ${repository.info().repoRoot} 克隆（后端：${formatIsolationBackend(result.clonedWith)}）`);
 		}
 	}
 	if (result.cloneError) {
-		console.error(chalk.dim(`warning: worktree clone fell back to plain checkout: ${result.cloneError}`));
+		console.error(chalk.dim(`warning: 工作树克隆失败，已回退为普通检出: ${result.cloneError}`));
 	}
 }
 
@@ -138,20 +138,20 @@ export async function listWorktrees(options: ListWorktreesOptions): Promise<void
 		return;
 	}
 	if (entries.length === 0) {
-		console.log(chalk.dim(`No agent-managed worktrees found under ${getWorktreesDir()}.`));
+		console.log(chalk.dim(`在 ${getWorktreesDir()} 下未找到任何 agent 管理的工作树。`));
 		return;
 	}
 	let live = 0;
 	let orphaned = 0;
 	for (const entry of entries) {
-		const tag = entry.orphanReason ? chalk.yellow("orphaned") : chalk.green("live    ");
+		const tag = entry.orphanReason ? chalk.yellow("已失效  ") : chalk.green("存活    ");
 		const detail = formatEntryDetail(entry);
 		console.log(`${tag}  ${entry.path}`);
 		if (detail) console.log(`          ${chalk.dim(detail)}`);
 		if (entry.orphanReason) orphaned += 1;
 		else live += 1;
 	}
-	console.log(chalk.dim(`\n${live} live · ${orphaned} orphaned · ${entries.length} total`));
+	console.log(chalk.dim(`\n${live} 个存活 · ${orphaned} 个已失效 · 共 ${entries.length} 个`));
 }
 
 export async function clearWorktrees(options: ClearWorktreesOptions): Promise<void> {
@@ -162,7 +162,7 @@ export async function clearWorktrees(options: ClearWorktreesOptions): Promise<vo
 		if (options.json) {
 			console.log(JSON.stringify({ removed: 0, kept: entries.length }));
 		} else {
-			console.log(chalk.dim(options.all ? "No worktrees to remove." : "No orphaned worktrees to remove."));
+			console.log(chalk.dim(options.all ? "没有可移除的工作树。" : "没有可移除的已失效工作树。"));
 		}
 		return;
 	}
@@ -172,9 +172,9 @@ export async function clearWorktrees(options: ClearWorktreesOptions): Promise<vo
 			console.log(JSON.stringify({ wouldRemove: targets.map(t => t.path) }, null, 2));
 		} else {
 			for (const target of targets) {
-				console.log(`${chalk.yellow("would remove")}  ${target.path}`);
+				console.log(`${chalk.yellow("将移除")}  ${target.path}`);
 			}
-			console.log(chalk.dim(`\n${targets.length} dir${targets.length === 1 ? "" : "s"} would be removed.`));
+			console.log(chalk.dim(`\n将移除 ${targets.length} 个目录。`));
 		}
 		return;
 	}
@@ -222,13 +222,13 @@ export async function clearWorktrees(options: ClearWorktreesOptions): Promise<vo
 
 	for (const result of results) {
 		if (result.ok) {
-			console.log(`${chalk.green("removed")}  ${result.path}`);
+			console.log(`${chalk.green("已移除")}  ${result.path}`);
 		} else {
-			console.log(`${chalk.red("failed ")}  ${result.path}`);
+			console.log(`${chalk.red("失败   ")}  ${result.path}`);
 			if (result.error) console.log(`          ${chalk.dim(result.error)}`);
 		}
 	}
-	console.log(chalk.dim(`\n${succeeded} removed${failed > 0 ? ` · ${chalk.red(`${failed} failed`)}` : ""}`));
+	console.log(chalk.dim(`\n已移除 ${succeeded} 个${failed > 0 ? ` · ${chalk.red(`${failed} 个失败`)}` : ""}`));
 	if (failed > 0) process.exitCode = 1;
 }
 
@@ -375,15 +375,15 @@ async function readWorktreeBranch(headFile: string): Promise<string | undefined>
 function formatEntryDetail(entry: WorktreeEntry): string {
 	const parts: string[] = [];
 	if (entry.kind === "pr-checkout") {
-		const repo = entry.parentRepo ? path.basename(entry.parentRepo) : "unknown repo";
-		const branch = entry.branch ?? "unknown branch";
+		const repo = entry.parentRepo ? path.basename(entry.parentRepo) : "未知仓库";
+		const branch = entry.branch ?? "未知分支";
 		parts.push(`${repo} · ${branch}`);
 	} else if (entry.kind === "task-isolation") {
-		parts.push("task-isolation sandbox");
+		parts.push("任务隔离沙箱");
 	} else if (entry.kind === "empty") {
-		parts.push("legacy project shell");
+		parts.push("遗留项目空壳");
 	} else {
-		parts.push("unrecognized contents");
+		parts.push("无法识别的内容");
 	}
 	if (entry.orphanReason) parts.push(entry.orphanReason);
 	return parts.join(" — ");

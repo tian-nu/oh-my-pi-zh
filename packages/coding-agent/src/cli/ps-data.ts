@@ -219,7 +219,7 @@ export async function collectScope(scope: PsScope): Promise<PsScopeReport> {
 						if (ping.op === "ping") scope.projectDir = ping.projectDir;
 					}
 					const result = await client.request({ op: "list" });
-					if (result.op !== "list") throw new Error(`Unexpected broker response ${result.op}`);
+					if (result.op !== "list") throw new Error(`意外的 broker 响应 ${result.op}`);
 					return {
 						scope,
 						daemons: result.daemons.map(snapshot => ({
@@ -316,7 +316,7 @@ export function uptimeCell(snapshot: DaemonSnapshot): string {
 	return formatDuration(Date.now() - snapshot.startedAt);
 }
 
-export const TABLE_HEADER = ["NAME", "STATE", "PID", "UPTIME", "RESTARTS", "FLAGS", "COMMAND"];
+export const TABLE_HEADER = ["名称", "状态", "PID", "运行时长", "重启", "标志", "命令"];
 
 /** Raw (possibly colored) cells for one daemon row, aligned with {@link TABLE_HEADER}. */
 export function tableCells(row: PsDaemonRow): string[] {
@@ -338,6 +338,6 @@ export function scopeHeader(scope: PsScope): string {
 			? `global ${chalk.bold(scope.service ?? path.basename(scope.runtimeDir))}`
 			: `project ${chalk.bold(scope.projectDir ?? path.basename(scope.runtimeDir))}`;
 	const broker =
-		scope.brokerPid !== undefined ? chalk.green(`broker pid ${scope.brokerPid}`) : chalk.dim("broker not running");
+		scope.brokerPid !== undefined ? chalk.green(`broker pid ${scope.brokerPid}`) : chalk.dim("broker 未运行");
 	return `${label} ${chalk.dim("—")} ${broker}`;
 }

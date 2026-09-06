@@ -42,7 +42,7 @@ function resolveTargetDir(flags: AgentsCommandArgs["flags"]): string {
 	}
 
 	if (flags.user && flags.project) {
-		throw new Error("Choose either --user or --project, not both.");
+		throw new Error("--user 和 --project 只能二选一。");
 	}
 
 	if (flags.project) {
@@ -115,13 +115,13 @@ export async function runAgentsCommand(cmd: AgentsCommandArgs): Promise<void> {
 				return;
 			}
 
-			writeStdout(chalk.bold(`Bundled agents: ${result.total}`));
-			writeStdout(chalk.dim(`Target directory: ${result.targetDir}`));
-			writeStdout(chalk.green(`${theme.status.success} Written: ${result.written.length}`));
+			writeStdout(chalk.bold(`内置 agent 数量：${result.total}`));
+			writeStdout(chalk.dim(`目标目录：${result.targetDir}`));
+			writeStdout(chalk.green(`${theme.status.success} 已写入：${result.written.length}`));
 			if (result.skipped.length > 0) {
 				writeStdout(
 					chalk.yellow(
-						`${theme.status.warning} Skipped existing: ${result.skipped.length} (use --force to overwrite)`,
+						`${theme.status.warning} 已跳过现有文件：${result.skipped.length}（使用 --force 可覆盖）`,
 					),
 				);
 			}

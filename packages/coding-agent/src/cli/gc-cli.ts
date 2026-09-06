@@ -523,10 +523,10 @@ async function moveSessionWithArtifacts(candidate: ArchiveCandidate): Promise<vo
 	const legacyDestSession = destSession.endsWith(".gz") ? destSession.slice(0, -".gz".length) : `${destSession}.gz`;
 	const sourceArtifacts = sessionArtifactsPath(sourceSession);
 	const destArtifacts = sessionArtifactsPath(destSession);
-	if (await pathExists(destSession)) throw new Error(`archive destination exists: ${destSession}`);
-	if (await pathExists(legacyDestSession)) throw new Error(`archive destination exists: ${legacyDestSession}`);
+	if (await pathExists(destSession)) throw new Error(`归档目标已存在：${destSession}`);
+	if (await pathExists(legacyDestSession)) throw new Error(`归档目标已存在：${legacyDestSession}`);
 	if ((await pathExists(sourceArtifacts)) && (await pathExists(destArtifacts))) {
-		throw new Error(`archive artifacts destination exists: ${destArtifacts}`);
+		throw new Error(`归档产物目标已存在：${destArtifacts}`);
 	}
 
 	const moved: Array<{ source: string; destination: string; compressed?: boolean }> = [];
@@ -617,7 +617,7 @@ async function cleanupHistoryRowsForArchivedSessions(
 	try {
 		for (const id of await collectArchivedSessionIds(archiveRoot)) cleanupIds.add(id);
 	} catch (error) {
-		result.errors.push(`history cleanup scan: ${errorMessage(error)}`);
+		result.errors.push(`历史记录清理扫描：${errorMessage(error)}`);
 	}
 
 	try {
@@ -625,7 +625,7 @@ async function cleanupHistoryRowsForArchivedSessions(
 		result.historyRowsDeleted = cleanup.deleted;
 		result.ftsRebuilt = cleanup.ftsRebuilt;
 	} catch (error) {
-		result.errors.push(`history cleanup: ${errorMessage(error)}`);
+		result.errors.push(`历史记录清理：${errorMessage(error)}`);
 	}
 }
 
@@ -1138,7 +1138,7 @@ async function collectArchivedStatsSessions(
 		try {
 			const text = await readTextIfPresent(file);
 			const header = sessionLineageHeaderFromText(text);
-			if (!header) throw new Error("archive is missing a valid session header");
+			if (!header) throw new Error("归档文件缺少有效的会话头部");
 			sessions.push({
 				path: sourcePath,
 				id: header.id,
@@ -1180,17 +1180,17 @@ async function cleanupStatsRowsForArchivedSessions(
 	let retainedSessions: SessionInfo[];
 	try {
 		for (const session of await collectArchivedStatsSessions(archiveRoot, sessionsRoot, (file, error) => {
-			result.errors.push(`stats cleanup scan ${file}: ${errorMessage(error)}`);
+			result.errors.push(`统计清理扫描 ${file}：${errorMessage(error)}`);
 		})) {
 			archivedByPath.set(path.resolve(session.path), session);
 		}
 	} catch (error) {
-		result.errors.push(`stats cleanup scan: ${errorMessage(error)}`);
+		result.errors.push(`统计清理扫描：${errorMessage(error)}`);
 	}
 	try {
 		retainedSessions = await listActiveSessions(sessionsRoot);
 	} catch (error) {
-		result.errors.push(`stats cleanup scan: ${errorMessage(error)}`);
+		result.errors.push(`统计清理扫描：${errorMessage(error)}`);
 		return;
 	}
 
@@ -1200,7 +1200,7 @@ async function cleanupStatsRowsForArchivedSessions(
 				retainedSessions.map(async session => {
 					const header = await readSessionLineageHeader(session.path);
 					if (!header || header.id !== session.id) {
-						throw new Error(`session header changed during stats cleanup: ${session.path}`);
+						throw new Error(`统计清理期间会话头部发生变化：${session.path}`);
 					}
 					return {
 						path: session.path,
@@ -1216,7 +1216,7 @@ async function cleanupStatsRowsForArchivedSessions(
 			result.statsRowsDeleted = reconcileStatsRowsForSessions(dbPath, context.plans);
 		});
 	} catch (error) {
-		result.errors.push(`stats cleanup: ${errorMessage(error)}`);
+		result.errors.push(`统计清理：${errorMessage(error)}`);
 	}
 }
 
@@ -1333,7 +1333,7 @@ async function checkpointWal(dbPath: string, apply: boolean): Promise<WalCheckpo
 		result.walBytes = 0;
 	}
 	if (checkpointAttempted && (result.busy > 0 || result.walBytes > 0)) {
-		throw new Error(`WAL checkpoint failed for ${dbPath}: busy=${result.busy}, walBytes=${result.walBytes}`);
+		throw new Error(`WAL checkpoint 失败（${dbPath}）：busy=${result.busy}, walBytes=${result.walBytes}`);
 	}
 	result.checkpointed = checkpointAttempted;
 	return result;
@@ -1478,9 +1478,9 @@ async function openGcBreakerLock(lockPath: string): Promise<{ path: string; hand
 				throw error;
 			}
 		}
-		if (!(await removeStaleGcLock(breakerPath))) throw new Error(`GC already running: ${lockPath}`);
+		if (!(await removeStaleGcLock(breakerPath))) throw new Error(`GC 已在运行：${lockPath}`);
 	}
-	throw new Error(`GC already running: ${lockPath}`);
+	throw new Error(`GC 已在运行：${lockPath}`);
 }
 
 async function openGcLock(lockPath: string): Promise<fs.FileHandle> {
@@ -1491,10 +1491,10 @@ async function openGcLock(lockPath: string): Promise<fs.FileHandle> {
 	try {
 		const raced = await openNewGcLock(lockPath);
 		if (raced) return raced;
-		if (!(await removeStaleGcLock(lockPath))) throw new Error(`GC already running: ${lockPath}`);
+		if (!(await removeStaleGcLock(lockPath))) throw new Error(`GC 已在运行：${lockPath}`);
 		const takeover = await openNewGcLock(lockPath);
 		if (takeover) return takeover;
-		throw new Error(`GC already running: ${lockPath}`);
+		throw new Error(`GC 已在运行：${lockPath}`);
 	} finally {
 		await releaseGcLockFile(breaker.path, breaker.handle);
 	}
@@ -1538,23 +1538,23 @@ function formatBytes(bytes: number): string {
 }
 
 function renderText(result: GcResult): string {
-	const lines = [`GC ${result.apply ? "applied" : "dry-run"} (${result.agentDir})`];
+	const lines = [`GC ${result.apply ? "已执行" : "试运行"} (${result.agentDir})`];
 	if (result.blobs) {
 		lines.push(
-			`blobs: ${result.blobs.deleted}/${result.blobs.wouldDelete} files, ${formatBytes(result.blobs.bytes)}, ${result.blobs.referenced} refs`,
+			`blobs：已删除 ${result.blobs.deleted}/${result.blobs.wouldDelete} 个文件，${formatBytes(result.blobs.bytes)}，${result.blobs.referenced} 个引用`,
 		);
-		if (result.blobs.errors.length > 0) lines.push(`blob errors: ${result.blobs.errors.length}`);
+		if (result.blobs.errors.length > 0) lines.push(`blob 错误：${result.blobs.errors.length} 个`);
 	}
 	if (result.archive) {
 		lines.push(
-			`sessions: ${result.archive.archived}/${result.archive.wouldArchive} archived, ${result.archive.historyRowsDeleted} history rows and ${result.archive.statsRowsDeleted} stats rows removed`,
+			`sessions：已归档 ${result.archive.archived}/${result.archive.wouldArchive} 个，移除了 ${result.archive.historyRowsDeleted} 行历史记录和 ${result.archive.statsRowsDeleted} 行统计数据`,
 		);
-		if (result.archive.skippedActive > 0) lines.push(`sessions skipped active: ${result.archive.skippedActive}`);
-		if (result.archive.errors.length > 0) lines.push(`session errors: ${result.archive.errors.length}`);
+		if (result.archive.skippedActive > 0) lines.push(`因活跃跳过的会话：${result.archive.skippedActive} 个`);
+		if (result.archive.errors.length > 0) lines.push(`会话错误：${result.archive.errors.length} 个`);
 	}
 	if (result.wal) {
-		const state = result.wal.checkpointed ? "checkpointed" : "checkpoint dry-run";
-		lines.push(`wal: ${state}, ${formatBytes(result.wal.walBytes)} across ${result.wal.databases.length} dbs`);
+		const state = result.wal.checkpointed ? "已 checkpoint" : "checkpoint 试运行";
+		lines.push(`wal：${state}，共 ${formatBytes(result.wal.walBytes)}，涉及 ${result.wal.databases.length} 个数据库`);
 	}
 	return `${lines.join("\n")}\n`;
 }

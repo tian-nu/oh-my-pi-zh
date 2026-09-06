@@ -195,44 +195,44 @@ export function resolveReleaseBinaryAsset(
 	options: { allowPrerelease?: boolean } = {},
 ): ReleaseBinaryAsset {
 	if (!isRecord(release)) {
-		throw new Error("Invalid GitHub release metadata");
+		throw new Error("GitHub release 元数据无效");
 	}
 	if (release.tag_name !== expectedTag) {
-		throw new Error(`GitHub release tag mismatch: expected ${expectedTag}`);
+		throw new Error(`GitHub release tag 不匹配：期望 ${expectedTag}`);
 	}
 	if (release.draft !== false) {
-		throw new Error(`GitHub release ${expectedTag} is a draft, not a published release`);
+		throw new Error(`GitHub release ${expectedTag} 是草稿，不是已发布的 release`);
 	}
 	if (release.prerelease !== false && !options.allowPrerelease) {
-		throw new Error(`GitHub release ${expectedTag} is a prerelease; only canary updates install prerelease assets`);
+		throw new Error(`GitHub release ${expectedTag} 是 prerelease；只有 canary 更新才会安装 prerelease 资源`);
 	}
 	if (!Array.isArray(release.assets)) {
-		throw new Error(`GitHub release ${expectedTag} has no asset list`);
+		throw new Error(`GitHub release ${expectedTag} 没有资源列表`);
 	}
 
 	const matches = release.assets.filter(asset => isRecord(asset) && asset.name === binaryName);
 	if (matches.length !== 1) {
-		throw new Error(`GitHub release ${expectedTag} has ${matches.length} assets named ${binaryName}`);
+		throw new Error(`GitHub release ${expectedTag} 中名为 ${binaryName} 的资源有 ${matches.length} 个`);
 	}
 
 	const asset = matches[0];
 	if (!isRecord(asset) || asset.state !== "uploaded") {
-		throw new Error(`GitHub release asset ${binaryName} is not fully uploaded`);
+		throw new Error(`GitHub release 资源 ${binaryName} 尚未上传完成`);
 	}
 	if (typeof asset.size !== "number" || !Number.isSafeInteger(asset.size) || asset.size <= 0) {
-		throw new Error(`GitHub release asset ${binaryName} has an invalid size`);
+		throw new Error(`GitHub release 资源 ${binaryName} 的大小无效`);
 	}
 	if (typeof asset.digest !== "string") {
-		throw new Error(`GitHub release asset ${binaryName} has no digest`);
+		throw new Error(`GitHub release 资源 ${binaryName} 缺少 digest`);
 	}
 	const digest = /^sha256:([0-9a-f]{64})$/i.exec(asset.digest)?.[1];
 	if (!digest) {
-		throw new Error(`GitHub release asset ${binaryName} has an unsupported digest`);
+		throw new Error(`GitHub release 资源 ${binaryName} 的 digest 格式不受支持`);
 	}
 
 	const expectedUrl = `https://github.com/${REPO}/releases/download/${expectedTag}/${binaryName}`;
 	if (asset.browser_download_url !== expectedUrl) {
-		throw new Error(`GitHub release asset ${binaryName} has an unexpected download URL`);
+		throw new Error(`GitHub release 资源 ${binaryName} 的下载 URL 与预期不符`);
 	}
 
 	return {
@@ -264,18 +264,18 @@ async function getReleaseBinaryAsset(
 		});
 	} catch (err) {
 		if (isTimeoutError(err)) {
-			throw new Error("Timed out fetching GitHub release metadata after 30s", { cause: err });
+			throw new Error("获取 GitHub release 元数据 30 秒后超时", { cause: err });
 		}
 		if (isUnsupportedProxyError(err)) throw new Error(unsupportedProxyMessage(), { cause: err });
 		throw err;
 	}
 	if ((response.status === 403 && !githubToken) || response.status === 429) {
 		throw new Error(
-			"GitHub API rate limit exceeded while fetching release metadata; retry later or set GITHUB_TOKEN or GH_TOKEN",
+			"获取 release 元数据时触发 GitHub API 速率限制；请稍后重试，或设置 GITHUB_TOKEN 或 GH_TOKEN",
 		);
 	}
 	if (!response.ok) {
-		throw new Error(`Failed to fetch GitHub release metadata: ${response.statusText}`);
+		throw new Error(`获取 GitHub release 元数据失败：${response.statusText}`);
 	}
 
 	return resolveReleaseBinaryAsset(await response.json(), tag, binaryName, { allowPrerelease });
@@ -304,13 +304,13 @@ export async function downloadVerifiedBinary(options: VerifiedBinaryDownloadOpti
 		});
 	} catch (err) {
 		if (isTimeoutError(err)) {
-			throw new Error("Timed out downloading release binary after 15 minutes", { cause: err });
+			throw new Error("下载 release 二进制文件 15 分钟后超时", { cause: err });
 		}
 		if (isUnsupportedProxyError(err)) throw new Error(unsupportedProxyMessage(), { cause: err });
 		throw err;
 	}
 	if (!response.ok || !response.body) {
-		throw new Error(`Download failed: ${response.statusText}`);
+		throw new Error(`下载失败：${response.statusText}`);
 	}
 
 	const hash = createHash("sha256");
@@ -321,7 +321,7 @@ export async function downloadVerifiedBinary(options: VerifiedBinaryDownloadOpti
 			if (size > options.expectedSize) {
 				callback(
 					new Error(
-						`Downloaded binary size mismatch: expected ${options.expectedSize} bytes, received at least ${size}`,
+					`下载的二进制大小不匹配：期望 ${options.expectedSize} 字节，实际至少 ${size} 字节`,
 					),
 				);
 				return;
@@ -335,16 +335,16 @@ export async function downloadVerifiedBinary(options: VerifiedBinaryDownloadOpti
 		await pipeline(response.body, verifier, fs.createWriteStream(options.targetPath, { mode: 0o600 }));
 		const digest = `sha256:${hash.digest("hex")}`;
 		if (size !== options.expectedSize) {
-			throw new Error(`Downloaded binary size mismatch: expected ${options.expectedSize} bytes, received ${size}`);
+			throw new Error(`下载的二进制大小不匹配：期望 ${options.expectedSize} 字节，实际 ${size} 字节`);
 		}
 		if (digest !== options.expectedDigest) {
-			throw new Error(`Downloaded binary digest mismatch: expected ${options.expectedDigest}, received ${digest}`);
+			throw new Error(`下载的二进制 digest 不匹配：期望 ${options.expectedDigest}，实际 ${digest}`);
 		}
 		await fs.promises.chmod(options.targetPath, 0o755);
 	} catch (err) {
 		await unlinkIfExists(options.targetPath);
 		if (isTimeoutError(err)) {
-			throw new Error("Timed out downloading release binary after 15 minutes", { cause: err });
+			throw new Error("下载 release 二进制文件 15 分钟后超时", { cause: err });
 		}
 		if (isUnsupportedProxyError(err)) throw new Error(unsupportedProxyMessage(), { cause: err });
 		throw err;
@@ -380,7 +380,7 @@ export function parseUpdateArgs(
 
 	const canary = args.includes("--canary");
 	const stable = args.includes("--stable");
-	if (canary && stable) throw new Error("--canary and --stable are mutually exclusive");
+	if (canary && stable) throw new Error("--canary 与 --stable 互斥");
 
 	return {
 		force: args.includes("--force") || args.includes("-f"),
@@ -753,7 +753,7 @@ async function resolveUpdateTarget(options: { allowPackageManagers: boolean }): 
 
 	if (bunBinDir) return { method: "bun" };
 
-	throw new Error(`Could not resolve ${APP_NAME} binary path in PATH`);
+	throw new Error(`无法在 PATH 中解析 ${APP_NAME} 二进制文件路径`);
 }
 
 /** Bound on `omp.rename` hops so a broken pointer chain cannot loop forever. */
@@ -771,7 +771,7 @@ async function fetchLatestManifest(
 		});
 	} catch (err) {
 		if (isTimeoutError(err)) {
-			throw new Error(`Timed out fetching release info for ${pkg} after ${Math.round(timeoutMs / 1000)}s`, {
+			throw new Error(`获取 ${pkg} 的 release 信息 ${Math.round(timeoutMs / 1000)} 秒后超时`, {
 				cause: err,
 			});
 		}
@@ -780,14 +780,14 @@ async function fetchLatestManifest(
 	}
 	if (!response.ok) {
 		if (response.status === 404 && channel === "canary") {
-			throw new Error(`No canary release has been published for ${pkg} yet. Try \`${APP_NAME} update --stable\`.`);
+			throw new Error(`${pkg} 尚未发布 canary release。请尝试 \`${APP_NAME} update --stable\`。`);
 		}
-		throw new Error(`Failed to fetch release info for ${pkg}: ${response.statusText}`);
+		throw new Error(`获取 ${pkg} 的 release 信息失败：${response.statusText}`);
 	}
 
 	const data: unknown = await response.json();
 	if (!isRecord(data) || typeof data.version !== "string") {
-		throw new Error(`Malformed npm registry response for ${pkg}: missing version`);
+		throw new Error(`${pkg} 的 npm registry 响应格式错误：缺少 version`);
 	}
 	return { version: data.version, manifest: data };
 }
@@ -1101,7 +1101,7 @@ function getBinaryName(): string {
 			os = "windows";
 			break;
 		default:
-			throw new Error(`Unsupported platform: ${platform}`);
+			throw new Error(`不支持的平台：${platform}`);
 	}
 
 	let archName: string;
@@ -1113,7 +1113,7 @@ function getBinaryName(): string {
 			archName = "arm64";
 			break;
 		default:
-			throw new Error(`Unsupported architecture: ${arch}`);
+			throw new Error(`不支持的架构：${arch}`);
 	}
 
 	if (os === "windows") {
@@ -1166,14 +1166,14 @@ async function verifyInstalledVersion(expectedVersion: string): Promise<Installe
 
 function printVerifiedVersion(expectedVersion: string): void {
 	const icon = theme?.status?.success ?? "✔";
-	console.log(chalk.green(`\n${icon} Updated to ${expectedVersion}`));
+	console.log(chalk.green(`\n${icon} 已更新到 ${expectedVersion}`));
 }
 
 function formatVerificationFailure(result: InstalledVersionVerification, expectedVersion: string): string {
 	if (result.actual) {
-		return `${APP_NAME} at ${result.path} still reports ${result.actual} (expected ${expectedVersion})`;
+		return `${result.path} 处的 ${APP_NAME} 仍报告版本 ${result.actual}（期望 ${expectedVersion}）`;
 	}
-	return `could not verify updated version${result.path ? ` at ${result.path}` : ""}`;
+	return `无法验证更新后的版本${result.path ? `（路径：${result.path}）` : ""}`;
 }
 
 /**
@@ -1184,8 +1184,8 @@ function printVerificationResult(result: InstalledVersionVerification, expectedV
 		printVerifiedVersion(expectedVersion);
 		return;
 	}
-	console.log(chalk.yellow(`\nWarning: ${formatVerificationFailure(result, expectedVersion)}`));
-	console.log(chalk.yellow(`You may need to reinstall: ${installerHint()}`));
+	console.log(chalk.yellow(`\n警告：${formatVerificationFailure(result, expectedVersion)}`));
+	console.log(chalk.yellow(`你可能需要重新安装：${installerHint()}`));
 }
 
 /** Verify the PATH-resolved launcher and print the outcome. */
@@ -1294,7 +1294,7 @@ export async function replaceBinaryForUpdate(options: BinaryReplacementOptions):
 		const verification = await options.verifyInstalledVersion(options.expectedVersion);
 		if (!verification.ok) {
 			throw new Error(
-				`${formatVerificationFailure(verification, options.expectedVersion)}; restored previous ${APP_NAME} binary`,
+				`${formatVerificationFailure(verification, options.expectedVersion)}；已恢复之前的 ${APP_NAME} 二进制文件`,
 			);
 		}
 
@@ -1478,17 +1478,17 @@ function packageManagerMigrationSteps(manager: "bun" | "npm", release: ReleaseIn
  *    and verify again; only a repeated failure aborts, with a recovery hint.
  */
 export async function migrateRenamedInstall(release: ReleaseInfo, steps: RenameMigrationSteps): Promise<void> {
-	console.log(chalk.dim(`npm package renamed to ${release.packages.pkg}; migrating this install.`));
+	console.log(chalk.dim(`npm 包已更名为 ${release.packages.pkg}；正在迁移此安装。`));
 	const installExit = await steps.install();
 	if (installExit !== 0) {
 		throw new Error(
-			`install of ${release.packages.pkg} failed with exit code ${installExit}; the existing install was left untouched`,
+			`安装 ${release.packages.pkg} 失败，退出码 ${installExit}；现有安装未被改动`,
 		);
 	}
 
 	const removeExit = await steps.removeOld();
 	if (removeExit !== 0) {
-		console.log(chalk.yellow(`Warning: could not remove the old ${PACKAGE} package; remove it manually later.`));
+		console.log(chalk.yellow(`警告：无法移除旧的 ${PACKAGE} 包；请稍后手动移除。`));
 	}
 
 	let verification = await steps.verify();
@@ -1501,7 +1501,7 @@ export async function migrateRenamedInstall(release: ReleaseInfo, steps: RenameM
 	}
 	if (!verification.ok) {
 		throw new Error(
-			`${formatVerificationFailure(verification, release.version)}; reinstall with: ${installerHint()}`,
+			`${formatVerificationFailure(verification, release.version)}；请使用以下命令重新安装：${installerHint()}`,
 		);
 	}
 	printVerifiedVersion(release.version);
@@ -1515,7 +1515,7 @@ export async function migrateRenamedInstall(release: ReleaseInfo, steps: RenameM
  * verified and reported its own result.
  */
 async function updateViaBun(release: ReleaseInfo): Promise<InstalledVersionVerification | undefined> {
-	console.log(chalk.dim("Updating via bun..."));
+	console.log(chalk.dim("正在通过 bun 更新..."));
 	let verification: InstalledVersionVerification | undefined;
 	if (release.packages.pkg !== PACKAGE) {
 		await migrateRenamedInstall(release, packageManagerMigrationSteps("bun", release));
@@ -1523,23 +1523,23 @@ async function updateViaBun(release: ReleaseInfo): Promise<InstalledVersionVerif
 		const args = buildBunInstallArgs(release.version, currentNativeTag(), release.packages);
 		const result = await $`bun ${args}`.nothrow();
 		if (result.exitCode !== 0) {
-			throw new Error(`bun install failed with exit code ${result.exitCode}`);
+			throw new Error(`bun install 失败，退出码 ${result.exitCode}`);
 		}
 		verification = await verifyInstalledVersion(release.version);
 	}
 	try {
 		const pruneResult = await pruneBunCacheAfterGlobalInstall();
 		if (pruneResult && pruneResult.removedEntries > 0) {
-			console.log(chalk.dim(`Pruned ${pruneResult.removedEntries} stale Bun cache entries`));
+			console.log(chalk.dim(`已清理 ${pruneResult.removedEntries} 条过期的 Bun 缓存条目`));
 		}
 	} catch (err) {
-		console.log(chalk.yellow(`Warning: could not prune stale Bun cache entries: ${err}`));
+		console.log(chalk.yellow(`警告：无法清理过期的 Bun 缓存条目：${err}`));
 	}
 	return verification;
 }
 
 async function updateViaNpm(release: ReleaseInfo): Promise<InstalledVersionVerification | undefined> {
-	console.log(chalk.dim("Updating via npm..."));
+	console.log(chalk.dim("正在通过 npm 更新..."));
 	if (release.packages.pkg !== PACKAGE) {
 		await migrateRenamedInstall(release, packageManagerMigrationSteps("npm", release));
 		return undefined;
@@ -1547,7 +1547,7 @@ async function updateViaNpm(release: ReleaseInfo): Promise<InstalledVersionVerif
 	const args = buildNpmInstallArgs(release.version, currentNativeTag(), release.packages);
 	const result = await $`npm ${args}`.nothrow();
 	if (result.exitCode !== 0) {
-		throw new Error(`npm install failed with exit code ${result.exitCode}`);
+		throw new Error(`npm install 失败，退出码 ${result.exitCode}`);
 	}
 
 	return await verifyInstalledVersion(release.version);
@@ -1636,53 +1636,53 @@ export async function updateViaManager(
 	}
 	console.log(
 		chalk.yellow(
-			`\n${steps.manager} did not install a working ${APP_NAME} ${release.version} launcher (${formatVerificationFailure(result, release.version)}); installing the standalone binary at ${launcherPath}.`,
+			`\n${steps.manager} 未能安装可用的 ${APP_NAME} ${release.version} 启动器（${formatVerificationFailure(result, release.version)}）；正在将独立二进制安装到 ${launcherPath}。`,
 		),
 	);
 	try {
 		await steps.repair(launcherPath);
 	} catch (err) {
-		throw new Error(`${steps.manager} update did not produce a working launcher and binary repair failed: ${err}`, {
+		throw new Error(`${steps.manager} 更新未能产生可用的启动器，且二进制修复也失败了：${err}`, {
 			cause: installError ?? err,
 		});
 	}
 	console.log(
 		chalk.yellow(
-			`This install is no longer managed by ${steps.manager}. Removing the old global package may delete this launcher; if it does, reinstall with: ${installerHint()}`,
+			`此安装不再由 ${steps.manager} 管理。移除旧的全局包可能会删除此启动器；如果发生，请使用以下命令重新安装：${installerHint()}`,
 		),
 	);
 }
 
 async function updateViaHomebrew(expectedVersion: string, force: boolean): Promise<void> {
-	console.log(chalk.dim("Updating Homebrew formulae..."));
+	console.log(chalk.dim("正在更新 Homebrew formula..."));
 	const update = await $`brew update`.nothrow();
 	if (update.exitCode !== 0) {
-		throw new Error(`brew update failed with exit code ${update.exitCode}`);
+		throw new Error(`brew update 失败，退出码 ${update.exitCode}`);
 	}
 
-	console.log(chalk.dim("Updating via Homebrew..."));
+	console.log(chalk.dim("正在通过 Homebrew 更新..."));
 	const args = buildHomebrewUpdateArgs(force);
 	const result = await $`brew ${args}`.nothrow();
 	if (result.exitCode !== 0) {
-		throw new Error(`brew ${args[0]} failed with exit code ${result.exitCode}`);
+		throw new Error(`brew ${args[0]} 失败，退出码 ${result.exitCode}`);
 	}
 
 	await printVerification(expectedVersion);
 }
 
 async function updateViaMise(expectedVersion: string, force: boolean): Promise<void> {
-	console.log(chalk.dim("Updating via mise..."));
+	console.log(chalk.dim("正在通过 mise 更新..."));
 	const args = buildMiseUpgradeArgs();
 	const result = await $`mise ${args}`.nothrow();
 	if (result.exitCode !== 0) {
-		throw new Error(`mise upgrade failed with exit code ${result.exitCode}`);
+		throw new Error(`mise upgrade 失败，退出码 ${result.exitCode}`);
 	}
 
 	if (force) {
 		const forceArgs = buildMiseForceInstallArgs(expectedVersion);
 		const forceResult = await $`mise ${forceArgs}`.nothrow();
 		if (forceResult.exitCode !== 0) {
-			throw new Error(`mise install --force failed with exit code ${forceResult.exitCode}`);
+			throw new Error(`mise install --force 失败，退出码 ${forceResult.exitCode}`);
 		}
 	}
 
@@ -1728,7 +1728,7 @@ export async function updateViaBinaryAt(
 		options.githubToken,
 		options.allowPrerelease,
 	);
-	console.log(chalk.dim(`Downloading ${binaryName}…`));
+	console.log(chalk.dim(`正在下载 ${binaryName}…`));
 	await downloadVerifiedBinary({
 		url: asset.url,
 		targetPath: tempPath,
@@ -1736,14 +1736,14 @@ export async function updateViaBinaryAt(
 		expectedDigest: asset.digest,
 		fetchImpl: options.fetchImpl,
 	});
-	console.log(chalk.dim(`Verified ${asset.digest}`));
+	console.log(chalk.dim(`已校验 ${asset.digest}`));
 
 	// Serialize the target swap and stale-artifact sweep per target so two
 	// overlapping `omp update` runs never replace the same binary concurrently
 	// or reclaim each other's live backup/temp files. The download above writes
 	// to a unique temp path and is safe to overlap; only the swap is shared.
 	await withFileLock(targetPath, async () => {
-		console.log(chalk.dim("Installing update..."));
+		console.log(chalk.dim("正在安装更新..."));
 		await replaceBinaryForUpdate({
 			targetPath,
 			tempPath,
@@ -1765,7 +1765,7 @@ export async function updateViaBinaryAt(
 		await sweepStaleUpdateArtifacts(targetPath);
 	});
 	printVerifiedVersion(expectedVersion);
-	console.log(chalk.dim(`Restart ${APP_NAME} to use the new version`));
+	console.log(chalk.dim(`重启 ${APP_NAME} 以使用新版本`));
 }
 
 /**
@@ -1820,7 +1820,7 @@ export async function updateViaShimTakeover(
 		options.githubToken,
 		options.allowPrerelease,
 	);
-	console.log(chalk.dim(`Downloading ${binaryName}…`));
+	console.log(chalk.dim(`正在下载 ${binaryName}…`));
 	await downloadVerifiedBinary({
 		url: asset.url,
 		targetPath: tempPath,
@@ -1828,14 +1828,14 @@ export async function updateViaShimTakeover(
 		expectedDigest: asset.digest,
 		fetchImpl: options.fetchImpl,
 	});
-	console.log(chalk.dim(`Verified ${asset.digest}`));
+	console.log(chalk.dim(`已校验 ${asset.digest}`));
 	const forwarded: Array<{ launcher: string; original: string }> = [];
 	const stuck: string[] = [];
 	// Serialize the launcher swap and artifact sweep so two overlapping updates
 	// never retire the same shims or reclaim a live run's backup before its
 	// verification can roll it back.
 	await withFileLock(exePath, async () => {
-		console.log(chalk.dim(`Installing ${APP_NAME}.exe beside the script launcher...`));
+		console.log(chalk.dim(`正在把 ${APP_NAME}.exe 安装到脚本启动器旁...`));
 		await fs.promises.rename(tempPath, exePath);
 		// Retire the shims so PATH resolution lands on the new exe. Renamed, not
 		// deleted: restorable on verification failure, and Windows permits
@@ -1881,7 +1881,7 @@ export async function updateViaShimTakeover(
 			}
 			await unlinkIfExists(exePath);
 			throw new Error(
-				`${formatVerificationFailure(verification, expectedVersion)}; restored previous ${APP_NAME} launcher`,
+				`${formatVerificationFailure(verification, expectedVersion)}；已恢复之前的 ${APP_NAME} 启动器`,
 			);
 		}
 		for (const { backup } of retired) {
@@ -1893,17 +1893,17 @@ export async function updateViaShimTakeover(
 		}
 	});
 	for (const { launcher } of forwarded) {
-		console.log(chalk.dim(`Converted ${launcher} to a forwarder (it could not be removed).`));
+		console.log(chalk.dim(`已将 ${launcher} 转换为转发器（无法移除它）。`));
 	}
 	for (const launcher of stuck) {
 		console.log(
 			chalk.yellow(
-				`Could not retire ${launcher}; shells that prefer it may keep launching the old version until it is deleted manually.`,
+				`无法移除 ${launcher}；优先使用它的 shell 可能会继续启动旧版本，直到它被手动删除。`,
 			),
 		);
 	}
 	printVerifiedVersion(expectedVersion);
-	console.log(chalk.dim(`Restart ${APP_NAME} to use the new version`));
+	console.log(chalk.dim(`重启 ${APP_NAME} 以使用新版本`));
 }
 
 /**
@@ -1945,18 +1945,18 @@ export async function runUpdateCommand(opts: {
 	check: boolean;
 	channel?: UpdateChannel;
 }): Promise<void> {
-	console.log(chalk.dim(`Current version: ${VERSION}`));
+	console.log(chalk.dim(`当前版本：${VERSION}`));
 	const persistedChannel = readPersistedChannel() ?? "stable";
 	const channel = opts.channel ?? persistedChannel;
 	const isChannelSwitch = opts.channel !== undefined && opts.channel !== persistedChannel;
-	if (channel === "canary") console.log(chalk.dim("Current channel: canary"));
+	if (channel === "canary") console.log(chalk.dim("当前渠道：canary"));
 
 	// Check for updates
 	let release: ReleaseInfo;
 	try {
 		release = await getLatestRelease({ channel });
 	} catch (err) {
-		console.error(chalk.red(`Failed to check for updates: ${err}`));
+		console.error(chalk.red(`检查更新失败：${err}`));
 		process.exit(1);
 	}
 
@@ -1964,23 +1964,23 @@ export async function runUpdateCommand(opts: {
 
 	if (comparison <= 0 && !opts.force && !isChannelSwitch) {
 		const icon = theme?.status?.success ?? "✔";
-		console.log(chalk.green(`${icon} Already up to date`));
+		console.log(chalk.green(`${icon} 已是最新版本`));
 		return;
 	}
 
 	if (isChannelSwitch) {
 		console.log(
 			chalk.yellow(
-				`Switching to ${channel} ${release.version}${comparison <= 0 ? ` (downgrade from ${VERSION})` : ""}`,
+				`正在切换到 ${channel} ${release.version}${comparison <= 0 ? `（从 ${VERSION} 降级）` : ""}`,
 			),
 		);
 	} else if (comparison > 0) {
-		console.log(chalk.cyan(`New version available: ${release.version}`));
+		console.log(chalk.cyan(`新版本可用：${release.version}`));
 	} else {
-		console.log(chalk.yellow(`Forcing reinstall of ${release.version}`));
+		console.log(chalk.yellow(`强制重新安装 ${release.version}`));
 	}
 	if (release.packages.pkg !== PACKAGE) {
-		console.log(chalk.cyan(`The npm package moved to ${release.packages.pkg}; updating migrates this install.`));
+		console.log(chalk.cyan(`npm 包已迁移至 ${release.packages.pkg}；更新将迁移此安装。`));
 	}
 
 	if (opts.check) {
@@ -1997,12 +1997,12 @@ export async function runUpdateCommand(opts: {
 		const allowPrerelease = channel === "canary";
 		const target = await resolveUpdateTarget({ allowPackageManagers: !forceBinary });
 		if (channel === "canary" && (target.method === "nix" || target.method === "brew" || target.method === "mise")) {
-			console.log(chalk.yellow("Canary updates are only supported for bun, npm, or binary installs."));
+			console.log(chalk.yellow("canary 更新仅支持 bun、npm 或 binary 安装。"));
 			return;
 		}
 		if (target.method === "nix") {
-			console.log(chalk.yellow("This installation is managed by Nix and cannot update itself."));
-			console.log(chalk.dim("Update the flake input or profile that provides omp, then rebuild."));
+			console.log(chalk.yellow("此安装由 Nix 管理，无法自行更新。"));
+			console.log(chalk.dim("请更新提供 omp 的 flake input 或 profile，然后重新构建。"));
 			return;
 		} else if (target.method === "brew") {
 			await updateViaHomebrew(release.version, opts.force);
@@ -2013,12 +2013,12 @@ export async function runUpdateCommand(opts: {
 				// Reachable in forced mode only through a Windows script
 				// launcher resolved from PATH (the bun/npm bin-dir probes are
 				// skipped), so the launcher path is always known.
-				if (!target.path) throw new Error(`Could not resolve ${APP_NAME} launcher path in PATH`);
-				console.log(chalk.dim("This release ships as a standalone binary; replacing the script launcher."));
+				if (!target.path) throw new Error(`无法在 PATH 中解析 ${APP_NAME} 启动器路径`);
+				console.log(chalk.dim("此 release 以独立二进制形式发布；正在替换脚本启动器。"));
 				await updateViaShimTakeover(target.path, release.version, { allowPrerelease });
 				console.log(
 					chalk.yellow(
-						`This install is no longer managed by ${target.method}. Removing the old global package may delete this launcher; if it does, reinstall with: ${installerHint()}`,
+						`此安装不再由 ${target.method} 管理。移除旧的全局包可能会删除此启动器；如果发生，请使用以下命令重新安装：${installerHint()}`,
 					),
 				);
 			} else {
@@ -2030,20 +2030,20 @@ export async function runUpdateCommand(opts: {
 			}
 		} else {
 			if (forceBinary && target.replacesSymlink) {
-				console.log(chalk.dim("Replacing the package-manager launcher with the standalone binary."));
+				console.log(chalk.dim("正在用独立二进制替换包管理器启动器。"));
 			}
 			await updateViaBinaryAt(target.path, release.version, { allowPrerelease });
 			if (forceBinary && target.replacesSymlink) {
 				console.log(
 					chalk.yellow(
-						`This install is no longer managed by bun/npm. Removing the old global package may delete this launcher; if it does, reinstall with: ${installerHint()}`,
+						`此安装不再由 bun/npm 管理。移除旧的全局包可能会删除此启动器；如果发生，请使用以下命令重新安装：${installerHint()}`,
 					),
 				);
 			}
 		}
 		if (opts.channel) persistChannel(channel);
 	} catch (err) {
-		console.error(chalk.red(`Update failed: ${err}`));
+		console.error(chalk.red(`更新失败：${err}`));
 		process.exit(1);
 	}
 }
@@ -2052,23 +2052,23 @@ export async function runUpdateCommand(opts: {
  * Print update command help.
  */
 export function printUpdateHelp(): void {
-	console.log(`${chalk.bold(`${APP_NAME} update`)} - Check for and install updates
+	console.log(`${chalk.bold(`${APP_NAME} update`)} - 检查并安装更新
 
-${chalk.bold("Usage:")}
-  ${APP_NAME} update [options]
+${chalk.bold("用法:")}
+  ${APP_NAME} update [选项]
 
-${chalk.bold("Options:")}
-  -c, --check     Check for updates without installing
-  -f, --force     Force reinstall even if up to date
-  -l, --plugins   Update installed plugins
-  --canary        Switch to the canary channel and update
-  --stable        Switch back to the stable channel
+${chalk.bold("选项:")}
+  -c, --check     仅检查更新，不安装
+  -f, --force     即使已是最新版本也强制重新安装
+  -l, --plugins   更新已安装的插件
+  --canary        切换到 canary 渠道并更新
+  --stable        切换回 stable 渠道
 
-${chalk.bold("Examples:")}
-  ${APP_NAME} update              Update to latest version
-  ${APP_NAME} update --check      Check if updates are available
-  ${APP_NAME} update --force      Force reinstall
-  ${APP_NAME} update -l           Update installed plugins
-  ${APP_NAME} update --canary    Switch to the canary channel and update
+${chalk.bold("示例:")}
+  ${APP_NAME} update              更新到最新版本
+  ${APP_NAME} update --check      检查是否有可用更新
+  ${APP_NAME} update --force      强制重新安装
+  ${APP_NAME} update -l           更新已安装的插件
+  ${APP_NAME} update --canary    切换到 canary 渠道并更新
 `);
 }
