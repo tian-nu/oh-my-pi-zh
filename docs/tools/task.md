@@ -1,176 +1,176 @@
 # task
 
-> Spawn subagents — one per call, or a `tasks[]` batch per call (`task.batch`, default on). With `async.enabled=true`, ordinary spawns run in the background; otherwise the call blocks until they finish. Execution mode is per item: an item whose custom agent type declares `blocking: true` runs inline while non-blocking items in the same call still spawn as background jobs. No bundled agent currently declares `blocking: true`.
+> 派生子代理——每次调用一个，或每次调用一批 `tasks[]`（`task.batch`，默认开启）。当 `async.enabled=true` 时，普通派生在后台运行；否则调用会阻塞直到它们完成。执行模式按条目决定：自定义 agent 类型声明了 `blocking: true` 的条目以内联方式运行，而同一次调用中非阻塞的条目仍以后台作业方式派生。目前没有任何内置 agent 声明 `blocking: true`。
 
-## Source
-- Entry: `packages/coding-agent/src/task/index.ts`
-- Model-facing prompt: `packages/coding-agent/src/prompts/tools/task.md`
-- Key collaborators:
-  - `packages/coding-agent/src/task/types.ts` — dynamic schema, progress/result types, output caps.
-  - `packages/coding-agent/src/task/discovery.ts` — discover project/user/plugin/bundled agents.
-  - `packages/coding-agent/src/task/agents.ts` — bundled agent definitions and frontmatter parsing.
-  - `packages/coding-agent/src/task/executor.ts` — create child sessions, run subagents, collect output, hand finished sessions to the lifecycle manager.
-  - `packages/coding-agent/src/registry/agent-lifecycle.ts` — idle-TTL parking and revival of finished subagents.
-  - `packages/coding-agent/src/registry/agent-registry.ts` — process-global agent directory (`running | idle | parked | aborted`).
-  - `packages/coding-agent/src/async/job-manager.ts` — background job registration, progress, and result delivery.
-  - `packages/coding-agent/src/task/parallel.ts` — `Semaphore` used for the session-scoped concurrency bound.
-  - `@oh-my-pi/pi-natives` (`crates/pi-iso`) — isolation PAL: `isoResolve` / `isoStart` / `isoStop` backend resolution and fallback.
-  - `packages/coding-agent/src/task/worktree.ts` — isolation backend mapping (`parseIsolationBackend`) and lifecycle (`ensureIsolation`/`cleanupIsolation`), patch capture, branch merge.
-  - `packages/coding-agent/src/task/output-manager.ts` — session-scoped `agent://` id allocation.
-  - `packages/coding-agent/src/task/name-generator.ts` — default AdjectiveNoun agent ids.
-  - `packages/coding-agent/src/internal-urls/agent-protocol.ts` — resolve `agent://<id>` to saved subagent output.
-  - `packages/coding-agent/src/internal-urls/history-protocol.ts` — resolve `history://<id>` to a concise transcript.
-  - `packages/coding-agent/src/tools/index.ts` — tool registration and recursion-depth gating.
-  - `packages/coding-agent/src/sdk.ts` — child-session router/tool wiring and per-subagent `AgentOutputManager`.
-  - `docs/task-agent-discovery.md` — deeper discovery and precedence notes.
+## 源码位置
+- 入口：`packages/coding-agent/src/task/index.ts`
+- 面向模型的提示词：`packages/coding-agent/src/prompts/tools/task.md`
+- 主要协同文件：
+  - `packages/coding-agent/src/task/types.ts` — 动态 schema、进度/结果类型、输出上限。
+  - `packages/coding-agent/src/task/discovery.ts` — 发现项目/用户/插件/内置 agent。
+  - `packages/coding-agent/src/task/agents.ts` — 内置 agent 定义与 frontmatter 解析。
+  - `packages/coding-agent/src/task/executor.ts` — 创建子会话、运行子代理、收集输出、把已结束的会话交给生命周期管理器。
+  - `packages/coding-agent/src/registry/agent-lifecycle.ts` — 已结束子代理的 idle-TTL 停放与复活。
+  - `packages/coding-agent/src/registry/agent-registry.ts` — 进程全局的 agent 目录（`running | idle | parked | aborted`）。
+  - `packages/coding-agent/src/async/job-manager.ts` — 后台作业注册、进度与结果投递。
+  - `packages/coding-agent/src/task/parallel.ts` — 用于会话级并发上限的 `Semaphore`。
+  - `@oh-my-pi/pi-natives`（`crates/pi-iso`）— 隔离 PAL：`isoResolve` / `isoStart` / `isoStop` 后端解析与回退。
+  - `packages/coding-agent/src/task/worktree.ts` — 隔离后端映射（`parseIsolationBackend`）与生命周期（`ensureIsolation`/`cleanupIsolation`）、补丁捕获、分支合并。
+  - `packages/coding-agent/src/task/output-manager.ts` — 会话级 `agent://` id 分配。
+  - `packages/coding-agent/src/task/name-generator.ts` — 默认的 AdjectiveNoun agent id。
+  - `packages/coding-agent/src/internal-urls/agent-protocol.ts` — 把 `agent://<id>` 解析为保存的子代理输出。
+  - `packages/coding-agent/src/internal-urls/history-protocol.ts` — 把 `history://<id>` 解析为简洁 transcript。
+  - `packages/coding-agent/src/tools/index.ts` — 工具注册与递归深度门控。
+  - `packages/coding-agent/src/sdk.ts` — 子会话路由器/工具接线与每个子代理的 `AgentOutputManager`。
+  - `docs/task-agent-discovery.md` — 更深入的发现与优先级说明。
 
-## Inputs
+## 输入
 
-The wire schema is shape-swapped by `task.batch` (default on). One unit of work is the task item `{ name?, agent?, task, effort?, outputSchema?, schemaMode?, isolated? }`. `isolated` exists only when `task.isolation.enabled` is true **and plan mode is disabled**; `effort` exists only when `task.enableEffort=true` (default off).
+线上（wire）schema 会由 `task.batch`（默认开启）切换形态。一个工作单元是任务条目 `{ name?, agent?, task, effort?, outputSchema?, schemaMode?, isolated? }`。`isolated` 仅当 `task.isolation.enabled` 为 true **且禁用了 plan 模式**时才存在；`effort` 仅当 `task.enableEffort=true`（默认关闭）时才存在。
 
-- **Batch shape** (`task.batch` on): `{ context, tasks: item[] }` — one subagent per item, all run under the same fan-out rules; there is no top-level agent field. `context` is **required** shared background rendered into every spawned subagent's system prompt (`CONTEXT` section); `agent`, `outputSchema`, and `schemaMode` are per item. `effort` is added only when its setting enables it; `isolated` additionally requires plan mode to be disabled.
-- **Flat shape** (`task.batch` off): `{ ...item }` — exactly one spawn per call. Shared background goes into a `local://` file (e.g. `local://ctx.md`) that each spawn's `task` references; subagents share the parent's `local://` root.
+- **批量形态**（`task.batch` 开启）：`{ context, tasks: item[] }` — 每个条目一个子代理，全部在相同的扇出规则下运行；没有顶层 agent 字段。`context` 是**必需**的共享背景，会渲染进每个被派生子代理的系统提示词（`CONTEXT` 节）；`agent`、`outputSchema` 与 `schemaMode` 按条目设置。`effort` 仅在其设置启用时加入；`isolated` 还额外要求禁用 plan 模式。
+- **扁平形态**（`task.batch` 关闭）：`{ ...item }` — 每次调用恰好派生一个。共享背景写入 `local://` 文件（例如 `local://ctx.md`），由每次派生的 `task` 引用；子代理共享父级的 `local://` 根目录。
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 说明 |
 | --- | --- | --- | --- |
-| `context` | `string` | Yes (batch) | Shared background prepended to every spawn of the call via the subagent system prompt. Rejected when `task.batch` is off. |
-| `tasks` | `array` | Yes (batch) | One task item per subagent. Provided names must be unique within the call (case-insensitive). Rejected when `task.batch` is off. |
-| `name` | `string` | No | Stable agent name — becomes the registry/IRC id. Defaults to a generated AdjectiveNoun name. Uniquified per session by `AgentOutputManager`. Item field in batch shape, top-level in flat shape. |
-| `agent` | `string` | No | Agent type to run this item (e.g. `scout`). Defaults to the spawn policy's default agent (usually `task`); items in one batch call may use different agent types. Item field in batch shape, top-level in flat shape. |
-| `task` | `string` | Yes | The work — complete, self-contained instructions. Empty-after-trim is rejected. Item field in batch shape, top-level in flat shape. |
-| `effort` | `"lo" \| "med" \| "hi"` | No | Present only with `task.enableEffort=true`. Per-spawn thinking effort, mapped onto the resolved model's supported range (lowest/middle/highest level it tops out at, e.g. `high`/`xhigh`/`max`). Overrides the agent's default selector, including `auto`; omitting it keeps the agent's configured selector — automatic per-prompt classification only for agents configured `auto` (e.g. the bundled `task`); `scout`/`sonic` configure `medium`. Item field in batch shape, top-level in flat shape. |
-| `outputSchema` | JSON Schema (`object \| boolean \| string \| null` at the coarse wire-validation layer) | No | Invocation-specific structured-output contract. Takes precedence over agent frontmatter `output` and the inherited parent session schema. Item field in batch shape, top-level in flat shape. |
-| `schemaMode` | `"permissive" \| "strict"` | No | Validation mode for the effective output schema. Overrides the parent session mode; defaults to `permissive`. Item field in batch shape, top-level in flat shape. |
-| `isolated` | `boolean` | No | Run in an isolated workspace and return patches. Exists only when `task.isolation.enabled` is true and plan mode is disabled; per item in batch shape, top-level in flat shape. Isolated agents are torn down at completion — not revivable. |
+| `context` | `string` | 是（批量） | 共享背景，经由子代理系统提示词前置到本次调用的每次派生中。当 `task.batch` 关闭时拒绝该字段。 |
+| `tasks` | `array` | 是（批量） | 每个子代理一个任务条目。提供的名称在本次调用内必须唯一（不区分大小写）。当 `task.batch` 关闭时拒绝该字段。 |
+| `name` | `string` | 否 | 稳定的 agent 名称——成为 registry/IRC id。默认为生成的 AdjectiveNoun 名称。由 `AgentOutputManager` 按会话去重。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `agent` | `string` | 否 | 运行此条目的 agent 类型（例如 `scout`）。默认为派生策略的默认 agent（通常是 `task`）；一次批量调用中的条目可以使用不同的 agent 类型。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `task` | `string` | 是 | 要完成的工作——完整、自包含的指令。裁剪后为空会被拒绝。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `effort` | `"lo" \| "med" \| "hi"` | 否 | 仅在 `task.enableEffort=true` 时出现。每次派生的思考强度（effort），映射到已解析模型支持的范围（其最高所能达到的最低/中/高档，例如 `high`/`xhigh`/`max`）。覆盖 agent 的默认选择器，包括 `auto`；省略则保留 agent 配置的选择器——只有配置为 `auto` 的 agent（例如内置的 `task`）才做自动的逐 prompt 分类；`scout`/`sonic` 配置为 `medium`。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `outputSchema` | JSON Schema（粗粒度线上校验层为 `object \| boolean \| string \| null`） | 否 | 本次调用特有的结构化输出契约。优先于 agent frontmatter 的 `output` 与继承的父会话 schema。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `schemaMode` | `"permissive" \| "strict"` | 否 | 生效输出 schema 的校验模式。覆盖父会话模式；默认为 `permissive`。批量形态下为条目字段，扁平形态下为顶层字段。 |
+| `isolated` | `boolean` | 否 | 在隔离工作区中运行并返回补丁。仅当 `task.isolation.enabled` 为 true 且禁用 plan 模式时存在；批量形态下按条目设置，扁平形态下为顶层字段。隔离 agent 在完成时会被拆除——不可复活。 |
 
-There is no wire label field: the one-line UI label shown in the TUI/registry is generated automatically from the `task` text by the tiny/title model (fire-and-forget), so callers never provide it.
+没有 wire label 字段：TUI/registry 中显示的单行 UI 标签由 tiny/title 模型根据 `task` 文本自动生成（fire-and-forget），因此调用方从不提供它。
 
-Runtime stays permissive: the flat form is accepted even while `task.batch` is on (internal callers such as the commit flow's `analyze_files`, and stale transcripts). The model only ever sees one shape.
+运行时保持宽松：即使 `task.batch` 开启也接受扁平形式（内部调用方如提交流程的 `analyze_files`，以及过期 transcript）。模型只会看到一种形态。
 
-There is no legacy per-call `schema` parameter. Use `outputSchema` and optional `schemaMode`; when absent, structured output falls back to the agent definition's `output` frontmatter and then the inherited parent session schema.
+没有旧的按调用 `schema` 参数。请使用 `outputSchema` 与可选的 `schemaMode`；当两者都缺失时，结构化输出回退到 agent 定义的 `output` frontmatter，然后再回退到继承的父会话 schema。
 
-## Outputs
+## 输出
 
-The tool returns one text block plus `details: TaskToolDetails`.
+该工具返回一个文本块外加 `details: TaskToolDetails`。
 
-Background response (`async.enabled=true`):
-- `content`: `` Spawned agent `<id>` (job `<jobId>`). The result will be delivered when it yields. ... `` plus a coordination hint (`hub` DM when messaging is enabled, otherwise `hub` job control). A batch call instead returns `` Spawned N background agents using <agent types>. ... `` (the deduped per-item agent types, comma-joined) with a per-agent `- `<id>` (job `<jobId>`)` listing.
-- `details`: `{ projectAgentsDir, results, totalDurationMs, progress: [<AgentProgress per spawn>], async: { state, jobId, type: "task" } }`. The call keeps one shared `progress[]` snapshot; `async.jobId` is the first started job and `async.state` aggregates over the async spawns ("running" until every job settles, "failed" if any spawn failed) — jobs that settled before the call returned are already reflected. A mixed call's `results` carries the blocking spawns' inline `SingleResult`s (pure background calls return `results: []`).
-- Live progress keeps streaming into the same tool block via `onUpdate(...)`; each final result arrives later as an async-result injection into the parent conversation. The delivery text appends a follow-up hint: `` <id> is now idle — message it via `hub` to follow up; transcript at history://<id> `` (aborted variant points at the transcript only).
+后台响应（`async.enabled=true`）：
+- `content`：`` Spawned agent `<id>` (job `<jobId>`). The result will be delivered when it yields. ... `` 外加一条协作提示（启用消息时是 `hub` DM，否则是 `hub` 作业控制）。批量调用则返回 `` Spawned N background agents using <agent types>. ... ``（去重后的按条目 agent 类型，逗号连接），并附逐 agent 的 `- `<id>` (job `<jobId>`)` 列表。
+- `details`：`{ projectAgentsDir, results, totalDurationMs, progress: [<AgentProgress per spawn>], async: { state, jobId, type: "task" } }`。调用保持一份共享的 `progress[]` 快照；`async.jobId` 是第一个启动的作业，`async.state` 在所有异步派生之上聚合（在每个作业都结束前为 "running"，任一派生失败则为 "failed"）——在调用返回前已结束的作业会被反映在内。混合调用的 `results` 携带阻塞派生的内联 `SingleResult`（纯后台调用返回 `results: []`）。
+- 实时进度会通过 `onUpdate(...)` 持续流式进入同一个工具块；每个最终结果稍后以异步结果注入的方式到达父会话。投递文本会追加后续提示：`` <id> is now idle — message it via `hub` to follow up; transcript at history://<id> ``（中止变体只指向 transcript）。
 
-Settled response (`async.enabled=false`, no job manager, every item's agent `blocking: true`, or async job body):
-- `content`: summary rendered from `packages/coding-agent/src/prompts/tools/task-summary.md` with a preview capped at 5000 chars; `agent://<id>` holds the full output. A sync batch concatenates the per-spawn summaries.
-- `details.results`: one `SingleResult` per spawn; `usage`, `outputPaths` populated (aggregated across spawns for a sync batch).
+已结束响应（`async.enabled=false`、没有作业管理器、每个条目的 agent `blocking: true`，或异步作业体）：
+- `content`：由 `packages/coding-agent/src/prompts/tools/task-summary.md` 渲染的摘要，预览上限 5000 字符；`agent://<id>` 保存完整输出。同步批量会拼接每个派生的摘要。
+- `details.results`：每次派生一个 `SingleResult`；`usage`、`outputPaths` 会填充（同步批量的跨派生聚合）。
 
-`SingleResult` includes:
-- identity: `index`, `id`, `agent`, `agentSource`, `task`, `description`, optional `assignment` (internal payload names; the wire fields are `name`/`agent`/`task`)
-- status: `exitCode`, optional `error`, optional `aborted`, optional `abortReason`, optional `retryFailure`
-- output: `output`, `stderr`, `truncated`, `durationMs`, `tokens`, `requests`, optional `contextTokens`/`contextWindow`, `usage`
-- model: optional `modelOverride`, `resolvedModel`, `resolvedModelIsFallback`
-- structured result: optional `structuredOutput` with schema source/mode, validation status, parsed `data`, and validation `error`
-- artifact metadata: `outputPath?`, `patchPath?`, `branchName?`, `branchBaseSha?`, `nestedPatches?`, `outputMeta?`
-- extracted tool data: `extractedToolData?` from registered subprocess tool handlers such as `yield`
+`SingleResult` 包含：
+- 标识：`index`、`id`、`agent`、`agentSource`、`task`、`description`、可选的 `assignment`（内部负载名；wire 字段为 `name`/`agent`/`task`）
+- 状态：`exitCode`、可选的 `error`、可选的 `aborted`、可选的 `abortReason`、可选的 `retryFailure`
+- 输出：`output`、`stderr`、`truncated`、`durationMs`、`tokens`、`requests`、可选的 `contextTokens`/`contextWindow`、`usage`
+- 模型：可选的 `modelOverride`、`resolvedModel`、`resolvedModelIsFallback`
+- 结构化结果：可选的 `structuredOutput`，含 schema 来源/模式、校验状态、解析后的 `data` 与校验 `error`
+- 工件元数据：`outputPath?`、`patchPath?`、`branchName?`、`branchBaseSha?`、`nestedPatches?`、`outputMeta?`
+- 提取的工具数据：来自已注册子进程工具处理器（如 `yield`）的 `extractedToolData?`
 
-Artifacts and side channels:
-- Every subagent with an artifacts dir writes `<id>.md`; `agent://<id>` resolves to that file.
-- A subagent's own children are dot-qualified (`<id>.<child>`); `agent://<id>/<child>` reads that nested output. When the path names no nested output and the file is JSON, `agent://<id>/<path>` and `agent://<id>?q=<query>` perform JSON extraction.
-- Each subagent gets `<id>.jsonl` session history when the parent persists artifacts; `history://<id>` renders it as a concise transcript (works for live and parked agents).
-- Isolated patch mode writes `<id>.patch` before merge.
+工件与旁路通道：
+- 每个有工件目录的子代理都会写入 `<id>.md`；`agent://<id>` 解析到该文件。
+- 子代理自己的子代理以点限定命名（`<id>.<child>`）；`agent://<id>/<child>` 读取该嵌套输出。当路径不指向嵌套输出且文件是 JSON 时，`agent://<id>/<path>` 与 `agent://<id>?q=<query>` 执行 JSON 提取。
+- 父级持久化工件时，每个子代理都会得到 `<id>.jsonl` 会话历史；`history://<id>` 把它渲染为简洁 transcript（对活动与已停放 agent 均可用）。
+- 隔离补丁模式会在合并前写入 `<id>.patch`。
 
-## Flow
-1. `TaskTool.create(...)` discovers agents once per cwd through a process-level memo (`discoverAgentsForCreate`) to render the dynamic prompt description.
-2. `execute(...)` repairs raw params (`repairTaskParams`), then validates: `schema` is always rejected; `tasks`/`context` are rejected unless `task.batch` is on; batch calls need a non-empty `tasks` (a `task` per item, unique provided names), a non-empty shared `context`, and no top-level `task` alongside `tasks`; flat calls need `task`. The call is then normalized into its spawn list (`resolveSpawnItems`).
-3. Per-item execution split: items whose agent type declares `blocking: true` run inline; the rest become background jobs. The whole call runs sync when `async.enabled=false`, the session has no `AsyncJobManager` (orphaned host), or every item is blocking; inline spawns run through `#executeSync(...)` under the session-scoped semaphore.
-4. Background execution (any non-blocking item with `async.enabled=true` and an `AsyncJobManager`):
-   - agent ids are allocated up front via `AgentOutputManager.allocate(...)` — each item's `name`, or a generated AdjectiveNoun name — one per spawn;
-   - one `type: "task"` job per spawn is registered with `session.asyncJobManager` (`id` = agent id, `queued: true`, `ownerId` = caller agent id) and the tool returns immediately;
-   - each job body acquires the session-scoped `Semaphore` (one per `TaskTool` instance, resized in place from the live `task.maxConcurrency` setting before every acquire and release), marks the job running, runs `#executeSync(...)` with that spawn's params, and reports progress through the shared `buildAsyncDetails`/`onUpdate`;
-   - a failed or aborted run throws `TaskJobError` so the job lands `failed`, but the agent itself stays registered and interrogable.
-   - a mixed call registers the async jobs first, then runs its blocking items inline and returns once they settle — the text combines the inline summaries with the spawned-job listing, and the block keeps rendering the still-running background rows beside the inline results.
-5. `#executeSync(...)` runs the spawn path (`#runSpawn`), which rediscovers agents from disk, so runtime resolution can differ from the create-time description.
-6. It resolves each spawn's requested `agent` type, rejects unknown or settings-disabled agents, and enforces parent spawn policy plus `PI_BLOCKED_AGENT` self-recursion prevention.
-7. Model priority: `task.agentModelOverrides` → agent frontmatter → configured task role/session fallback. Output schema priority: per-call `outputSchema` → agent frontmatter `output` → inherited parent session schema.
-8. Plan mode swaps in an `effectiveAgent` with a read-only tool subset and plan-mode prompt; `runSubprocess(...)` receives the effective agent.
-9. If `isolated`, it requires a git repo (`getRepoRoot(...)` / `captureBaseline(...)`), maps `isolation.backend` to a backend-kind hint (`parseIsolationBackend`), and materializes the workspace via the natives PAL (`ensureIsolation` → `isoResolve`/`isoStart`), walking the candidate list when a backend is unavailable.
-10. Artifacts dir comes from the parent session file when available, otherwise a temp dir. When the session is executing an approved plan, the plan reference is handed to the subagent.
-11. Non-isolated spawns call `runSubprocess(...)` directly with parent cwd; isolated spawns run inside the isolation workspace, then commit to a branch (`mergeMode === "branch"`) or capture a patch, and always clean up the workspace.
-12. `runSubprocess(...)` creates a child agent session with an isolated settings snapshot (parent settings inherited — `async.enabled` and `bash.autoBackground.enabled` are **inherited** from the parent, not force-disabled; `tier.openai`/`tier.anthropic`/`tier.google` are re-resolved through `tier.subagent`; `tools.approvalMode` is forced to `yolo` because headless subagents have no UI to confirm prompts against; `advisor.enabled` is forced off unless the spawn opts in per agent; per-spawn overrides may disable read summarization and clear extra workspace roots for isolated runs), child `agentId` equal to the allocated id, child internal URL router/`AgentOutputManager`, output schema, the shared `context` (batch calls) in the system prompt's `CONTEXT` section, and the IRC peer roster in the system prompt.
-13. Child tool availability: explicit `agent.tools` if provided; auto-add `task` when the agent has `spawns` and depth allows; strip `task` at `task.maxRecursionDepth`; ensure `hub` is present in explicit tool lists; expand `exec` to `eval` + `bash`; strip parent-owned `todo` — unless the spawn is prewalk-armed, whose plan nudge + todo gate need the child to commit its own todo list before the model hand-off.
-14. The child must finish through the hidden `yield` tool; up to 3 reminder prompts, the last forcing `toolChoice = yield` when supported. `finalizeSubprocessOutput(...)` reconciles raw text, `yield` payloads, structured schemas, and abort states.
-15. End-of-run lifecycle (keep-alive, in the run finalizer):
-    - caller signal, wall-clock timeout, or internal hard abort → registry status `aborted`, session disposed — terminal;
-    - soft-request-budget abort on a non-isolated kept-alive agent → treated as resumable: the agent becomes `idle` and may receive a follow-up/revival;
-    - isolated run → status `parked` without a reviver (workspace is merged + cleaned, so the session is not revivable; transcript stays readable via `history://`), then session disposed and detached;
-    - everything else (success and failure alike) → status `idle` with the live session attached, and `AgentLifecycleManager.global().adopt(id, { idleTtlMs, revive })` arms the park timer. The reviver reopens the session JSONL.
-16. Lifecycle thereafter: `idle` agents are parked after `task.agentIdleTtlMs` (session disposed; `AgentRef` + session file retained); messaging (`hub`) or the Agent Hub revives them back to `idle`. `"Main"` is never parked.
+## 流程
+1. `TaskTool.create(...)` 通过进程级 memo（`discoverAgentsForCreate`）对每个 cwd 发现一次 agent，以渲染动态提示词描述。
+2. `execute(...)` 修复原始参数（`repairTaskParams`），然后校验：`schema` 总是被拒绝；`tasks`/`context` 在 `task.batch` 关闭时被拒绝；批量调用需要非空的 `tasks`（每个条目一个 `task`，提供的名称唯一）、非空的共享 `context`，且不能有与 `tasks` 并存的顶层 `task`；扁平调用需要 `task`。随后调用被规范化为其派生列表（`resolveSpawnItems`）。
+3. 按条目的执行拆分：agent 类型声明 `blocking: true` 的条目以内联方式运行；其余成为后台作业。当 `async.enabled=false`、会话没有 `AsyncJobManager`（孤儿宿主），或每个条目都阻塞时，整个调用同步运行；内联派生经由会话级信号量在 `#executeSync(...)` 中运行。
+4. 后台执行（任何带 `async.enabled=true` 与 `AsyncJobManager` 的非阻塞条目）：
+   - agent id 预先通过 `AgentOutputManager.allocate(...)` 分配——每个条目的 `name` 或生成的 AdjectiveNoun 名称——每次派生一个；
+   - 每次派生在 `session.asyncJobManager` 注册一个 `type: "task"` 作业（`id` = agent id、`queued: true`、`ownerId` = 调用方 agent id），工具立即返回；
+   - 每个作业体获取会话级 `Semaphore`（每个 `TaskTool` 实例一个，在每次获取与释放前根据实时的 `task.maxConcurrency` 设置就地调整大小），把作业标记为运行中，用该派生的参数运行 `#executeSync(...)`，并通过共享的 `buildAsyncDetails`/`onUpdate` 报告进度；
+   - 失败或中止的运行会抛出 `TaskJobError`，使作业落入 `failed`，但 agent 本身保持已注册且可质询。
+   - 混合调用先注册异步作业，再以内联方式运行其阻塞条目并在它们结束后返回——文本把内联摘要与已派生作业列表组合在一起，块内继续在以内联结果旁边渲染仍在运行的后台行。
+5. `#executeSync(...)` 运行派生路径（`#runSpawn`），它会重新从磁盘发现 agent，因此运行时解析可能与创建时的描述不同。
+6. 它解析每次派生请求的 `agent` 类型，拒绝未知或设置中禁用的 agent，并强制父级派生策略以及 `PI_BLOCKED_AGENT` 自递归预防。
+7. 模型优先级：`task.agentModelOverrides` → agent frontmatter → 配置的 task 角色/会话回退。输出 schema 优先级：每次调用的 `outputSchema` → agent frontmatter `output` → 继承的父会话 schema。
+8. plan 模式会换入一个带只读工具子集与 plan 模式提示词的 `effectiveAgent`；`runSubprocess(...)` 收到的是生效 agent。
+9. 若 `isolated`，它需要一个 git 仓库（`getRepoRoot(...)` / `captureBaseline(...)`），把 `isolation.backend` 映射为后端类型提示（`parseIsolationBackend`），并通过 natives PAL（`ensureIsolation` → `isoResolve`/`isoStart`）物化工作区，在后端不可用时遍历候选列表。
+10. 工件目录来自父会话文件（可用时），否则用临时目录。当会话正在执行已批准的 plan 时，plan 引用会交给子代理。
+11. 非隔离派生直接用父级 cwd 调用 `runSubprocess(...)`；隔离派生在隔离工作区内运行，然后提交到分支（`mergeMode === "branch"`）或捕获补丁，并且总是清理工作区。
+12. `runSubprocess(...)` 创建子 agent 会话，带隔离的设置快照（父级设置被继承——`async.enabled` 与 `bash.autoBackground.enabled` 从父级**继承**，而非强制禁用；`tier.openai`/`tier.anthropic`/`tier.google` 经由 `tier.subagent` 重新解析；`tools.approvalMode` 被强制为 `yolo`，因为无头子代理没有可用于确认提示的 UI；`advisor.enabled` 被强制关闭，除非该派生按 agent 选择加入；按派生的覆盖可以禁用读取摘要化并为隔离运行清除额外的工作区根目录）、与分配 id 相等的子级 `agentId`、子级内部 URL 路由器/`AgentOutputManager`、输出 schema、系统提示词 `CONTEXT` 节中的共享 `context`（批量调用），以及系统提示词中的 IRC 对等名册。
+13. 子级工具可用性：若提供了显式 `agent.tools` 则用之；当 agent 有 `spawns` 且深度允许时自动添加 `task`；在 `task.maxRecursionDepth` 处移除 `task`；确保显式工具列表中包含 `hub`；把 `exec` 展开为 `eval` + `bash`；移除父级拥有的 `todo`——除非该派生已预走查（prewalk）武装，其 plan 提示与 todo 门控需要子级在模型交接前提交自己的 todo 列表。
+14. 子级必须通过隐藏的 `yield` 工具结束；最多 3 条提醒提示，最后一条在受支持时强制 `toolChoice = yield`。`finalizeSubprocessOutput(...)` 调和原始文本、`yield` 负载、结构化 schema 与中止状态。
+15. 运行结束生命周期（keep-alive，在运行终结器中）：
+    - 调用方信号、墙上时钟超时或内部硬中止 → registry 状态 `aborted`、会话被处置——终态；
+    - 非隔离 keep-alive agent 上的软请求预算中止 → 视为可恢复：agent 变为 `idle`，可能收到后续/复活；
+    - 隔离运行 → 状态 `parked`，不带复活器（工作区已合并并清理，因此会话不可复活；transcript 仍可经 `history://` 读取），然后会话被处置并分离；
+    - 其他一切（成功与失败都一样）→ 状态 `idle` 且活动会话已附加，`AgentLifecycleManager.global().adopt(id, { idleTtlMs, revive })` 武装停放定时器。复活器会重新打开会话 JSONL。
+16. 此后生命周期：`idle` agent 在 `task.agentIdleTtlMs` 后被停放（会话被处置；`AgentRef` + 会话文件保留）；消息（`hub`）或 Agent Hub 会把它们复活回 `idle`。`"Main"` 永不停放。
 
-## Modes / Variants
-- Execution mode
-  - Background job — `async.enabled=true`; non-blocking spawns go through `AsyncJobManager`.
-  - Sync inline — `async.enabled=false`, no job manager, or the item's agent declares `blocking: true` (per item: a mixed call runs both modes).
-- Batch mode (`task.batch`, default on)
-  - on — `{ context, tasks[] }`: one independent spawn per item, required `context` shared across the call's spawns, with `agent`, `outputSchema`, and `schemaMode` per item. `effort` appears only when its setting enables it; `isolated` also requires plan mode to be disabled. Lifecycle, revival, and concurrency semantics match N parallel single calls.
-  - off — single spawn per call; `tasks`/`context` are rejected and removed from the schema, with the same conditional `effort`/`isolated` fields.
-- Isolation is enabled with `task.isolation.enabled`; `isolation.backend` selects `auto`, `apfs`, `btrfs`, `zfs`, `reflink`, `overlayfs`, `projfs`, `block-clone`, or `rcopy`, and the PAL resolves the actual backend with fallback.
-- Isolation merge strategy: patch mode (capture/apply root patches) or branch mode (commit to `omp/task/<id>`, cherry-pick into parent).
-- Agent source precedence is first-wins by exact name: project `.omp/agents`; user `.omp/agent/agents`; OMP extension-package `agents/` roots in CLI → project settings → user settings → installed npm/link plugin order; Claude marketplace plugin agents (project before user); then bundled (`scout`, `reviewer`, `security-reviewer`, `task`, `sonic`).
-- Prewalk: agent frontmatter `prewalk` or `task.agentPrewalk[agentName]` can start on the normal model and hand off to a cheaper resolved model at the first edit/write. `task.prewalk` (default off) arms this behavior for the bundled generic `task` agent. Missing/unconfigured targets and exact model+effort no-ops skip the handoff rather than failing the spawn.
-- Advisor: agent frontmatter `advisor` or `task.agentAdvisor[agentName]` (`"on"` / `"off"` / model pattern) pairs the child session with an advisor; an explicit pattern lands on the child's `modelRoles.advisor`. Subagents default to no advisor.
+## 模式 / 变体
+- 执行模式
+  - 后台作业——`async.enabled=true`；非阻塞派生经由 `AsyncJobManager`。
+  - 同步内联——`async.enabled=false`、没有作业管理器，或条目的 agent 声明 `blocking: true`（按条目：混合调用两种模式都运行）。
+- 批量模式（`task.batch`，默认开启）
+  - 开启——`{ context, tasks[] }`：每个条目一个独立派生，`context` 在本次调用的各派生间必需且共享，`agent`、`outputSchema` 与 `schemaMode` 按条目设置。`effort` 仅在其设置启用时出现；`isolated` 还要求禁用 plan 模式。生命周期、复活与并发语义等同于 N 次并行的单次调用。
+  - 关闭——每次调用单个派生；`tasks`/`context` 被拒绝并从 schema 中移除，带相同的条件性 `effort`/`isolated` 字段。
+- 用 `task.isolation.enabled` 启用隔离；`isolation.backend` 选择 `auto`、`apfs`、`btrfs`、`zfs`、`reflink`、`overlayfs`、`projfs`、`block-clone` 或 `rcopy`，PAL 带回退地解析实际后端。
+- 隔离合并策略：补丁模式（捕获/应用根补丁）或分支模式（提交到 `omp/task/<id>`，cherry-pick 进父级）。
+- agent 来源优先级按精确名称先到先得：项目 `.omp/agents`；用户 `.omp/agent/agents`；OMP 扩展包的 `agents/` 根目录按 CLI → 项目设置 → 用户设置 → 已安装 npm/link 插件的顺序；Claude marketplace 插件 agent（项目先于用户）；然后是内置（`scout`、`reviewer`、`security-reviewer`、`task`、`sonic`）。
+- 预走查（Prewalk）：agent frontmatter `prewalk` 或 `task.agentPrewalk[agentName]` 可以在常规模型上启动，并在第一次编辑/写入时交接给更便宜的已解析模型。`task.prewalk`（默认关闭）为内置的通用 `task` agent 武装此行为。缺失/未配置的目标以及确切的 model+effort 无操作会跳过交接而不是让派生失败。
+- Advisor：agent frontmatter `advisor` 或 `task.agentAdvisor[agentName]`（`"on"` / `"off"` / 模型模式）把子会话与 advisor 配对；显式模式会落到子级的 `modelRoles.advisor`。子代理默认没有 advisor。
 
-## Side Effects
-- Filesystem
-  - Writes `<id>.jsonl` and `<id>.md` under the session artifacts dir or a temp task dir; isolated patch mode writes `<id>.patch`.
-  - Creates/removes worktrees or overlay mount directories; branch mode creates temporary worktrees and task branches.
-- Network
-  - Child sessions may use whichever networked tools/models their active tool set permits.
-  - MCP proxy tools can call existing parent MCP connections with a 60_000 ms timeout.
-- Subprocesses / native bindings
-  - Isolation backends run through the `pi-natives` PAL (`crates/pi-iso`): kernel `overlay` with `fuse-overlayfs`/`fusermount[3]` fallback on Linux, APFS/Btrfs/ZFS/reflink clones, ProjFS on Windows, recursive copy as last resort.
-  - Git operations for baseline capture, patch apply, worktrees, branches, stash, cherry-pick, commits.
-- Session state (transcript, memory, jobs, checkpoints, registries)
-  - Creates child `AgentSession` instances with isolated settings snapshots; finished sessions stay registered in the process-global `AgentRegistry` as `idle`/`parked` until process teardown or explicit release.
-  - With `async.enabled=true`, registers one async job per spawn in `session.asyncJobManager`; completion is injected into the parent as an async-result message.
-  - Arms idle-TTL timers in `AgentLifecycleManager` (unref'd; they never hold the process open).
-  - Emits `task:subagent:event`, `task:subagent:progress`, and `task:subagent:lifecycle` on the parent event bus.
-  - Allocates session-scoped output ids through `AgentOutputManager` so `agent://` stays unique across invocations.
-  - Shares the parent `local://` root and `ArtifactManager` with subagents.
-- Background work / cancellation
-  - `hub` cancel (or parent tool-call abort) cancels background jobs; parent tool-call abort cancels sync runs through the call signal. A hard-aborted run lands `aborted` and is torn down.
-  - Missing-`yield` recovery sends up to three internal reminder prompts to the child session.
+## 副作用
+- 文件系统
+  - 在会话工件目录或临时 task 目录下写入 `<id>.jsonl` 与 `<id>.md`；隔离补丁模式写入 `<id>.patch`。
+  - 创建/移除 worktree 或 overlay 挂载目录；分支模式创建临时 worktree 与任务分支。
+- 网络
+  - 子会话可以使用其活动工具集允许的任何联网工具/模型。
+  - MCP 代理工具可以用 60_000 ms 超时调用已有的父级 MCP 连接。
+- 子进程 / 原生绑定
+  - 隔离后端经由 `pi-natives` PAL（`crates/pi-iso`）运行：Linux 上的内核 `overlay` 配合 `fuse-overlayfs`/`fusermount[3]` 回退、APFS/Btrfs/ZFS/reflink 克隆、Windows 上的 ProjFS、递归复制作为最后手段。
+  - 用于基线捕获、补丁应用、worktree、分支、stash、cherry-pick、提交的 git 操作。
+- 会话状态（transcript、memory、jobs、checkpoints、registries）
+  - 创建带隔离设置快照的子 `AgentSession` 实例；已结束的会话在进程拆除或显式释放前保持注册在进程全局 `AgentRegistry` 中，状态为 `idle`/`parked`。
+  - 当 `async.enabled=true` 时，在 `session.asyncJobManager` 中为每次派生注册一个异步作业；完成时以异步结果消息注入父级。
+  - 在 `AgentLifecycleManager` 中武装 idle-TTL 定时器（unref'd；它们永远不会让进程保持打开）。
+  - 在父级事件总线上发出 `task:subagent:event`、`task:subagent:progress` 与 `task:subagent:lifecycle`。
+  - 通过 `AgentOutputManager` 分配会话级输出 id，使 `agent://` 在多次调用间保持唯一。
+  - 与子代理共享父级的 `local://` 根目录与 `ArtifactManager`。
+- 后台工作 / 取消
+  - `hub` 取消（或父级工具调用中止）会取消后台作业；父级工具调用中止会通过调用信号取消同步运行。被硬中止的运行落入 `aborted` 并被拆除。
+  - 缺失 `yield` 的恢复会向子会话发送最多三条内部提醒提示。
 
-## Limits & Caps
-- Per-spawn effort is opt-in: `task.enableEffort` defaults to `false`; when false, `effort` is omitted from the dynamic model-facing schema.
-- Concurrency: one session-scoped `Semaphore` is resized in place from the live `task.maxConcurrency` setting before every acquire and release, then bounds concurrent subagents across parallel `task` calls — both async job bodies and the sync fallback acquire it. Mid-session setting changes therefore affect new spawns and work already queued on the semaphore.
-- Idle TTL: `task.agentIdleTtlMs`, default `420_000` ms (7 min); `<= 0` disables parking and keeps idle sessions live until exit.
-- Per-subagent output truncation: `MAX_OUTPUT_BYTES = 500_000` and `MAX_OUTPUT_LINES = 5000` in `packages/coding-agent/src/task/types.ts` (overridable via `PI_TASK_MAX_OUTPUT_BYTES` / `PI_TASK_MAX_OUTPUT_LINES`). Full raw output is still written to `<id>.md`.
-- Progress coalescing: `PROGRESS_COALESCE_MS = 150`; recent-output tail: `RECENT_OUTPUT_TAIL_BYTES = 8 * 1024` (last 8 non-empty lines).
-- Missing-`yield` reminder retries: `MAX_YIELD_RETRIES = 3`; MCP proxy timeout: `MCP_CALL_TIMEOUT_MS = 60_000` — both in `packages/coding-agent/src/task/executor.ts`.
-- Soft request budget: `task.softRequestBudget` defaults to 200 requests (`0` disables). Crossing it injects a wrap-up notice when `task.softRequestBudgetNotice` is enabled; at 1.5× the budget the run is force-stopped to yield partial findings. Bundled scout/sonic agents may impose a lower built-in cap.
-- Hard wall clock: `task.maxRuntimeMs` applies to every spawn; default `0` disables it.
-- Recursion depth gate: `task.maxRecursionDepth`; `packages/coding-agent/src/tools/index.ts` hides the `task` tool at or beyond the limit, and `runSubprocess(...)` also strips child `task` access at max depth.
-- Final inline summary preview uses `fullOutputThreshold = 5000` chars in `packages/coding-agent/src/task/index.ts`; `agent://<id>` points to the full artifact.
+## 限制与上限
+- 每次派生的 effort 为选择加入：`task.enableEffort` 默认为 `false`；为 false 时，`effort` 会从动态的面向模型 schema 中省略。
+- 并发：在每次获取与释放前，一个会话级 `Semaphore` 会根据实时的 `task.maxConcurrency` 设置就地调整大小，然后在并行的 `task` 调用之间限制并发子代理——异步作业体与同步回退都会获取它。因此会话中途的设置变更会影响新的派生与已在该信号量上排队的工作。
+- Idle TTL：`task.agentIdleTtlMs`，默认 `420_000` ms（7 分钟）；`<= 0` 禁用停放，让 idle 会话保持存活直到退出。
+- 每个子代理的输出截断：`packages/coding-agent/src/task/types.ts` 中的 `MAX_OUTPUT_BYTES = 500_000` 与 `MAX_OUTPUT_LINES = 5000`（可通过 `PI_TASK_MAX_OUTPUT_BYTES` / `PI_TASK_MAX_OUTPUT_LINES` 覆盖）。完整原始输出仍会写入 `<id>.md`。
+- 进度合并：`PROGRESS_COALESCE_MS = 150`；最近输出尾部：`RECENT_OUTPUT_TAIL_BYTES = 8 * 1024`（最后 8 个非空行）。
+- 缺失 `yield` 的提醒重试：`MAX_YIELD_RETRIES = 3`；MCP 代理超时：`MCP_CALL_TIMEOUT_MS = 60_000`——两者都在 `packages/coding-agent/src/task/executor.ts` 中。
+- 软请求预算：`task.softRequestBudget` 默认为 200 个请求（`0` 禁用）。当 `task.softRequestBudgetNotice` 启用时，超出预算会注入收尾提示；达到预算的 1.5× 时，运行被强制停止以产出部分发现。内置的 scout/sonic agent 可能施加更低的固有限制。
+- 硬墙上时钟：`task.maxRuntimeMs` 应用于每次派生；默认 `0` 禁用。
+- 递归深度门控：`task.maxRecursionDepth`；`packages/coding-agent/src/tools/index.ts` 在达到或超过限制时隐藏 `task` 工具，`runSubprocess(...)` 也会在最大深度处移除子级对 `task` 的访问。
+- 最终内联摘要预览在 `packages/coding-agent/src/task/index.ts` 中使用 `fullOutputThreshold = 5000` 字符；`agent://<id>` 指向完整工件。
 
-## Errors
-- Parameter validation failures are returned as normal tool text with empty `results`:
-  - `schema` (never accepted)
-  - `tasks` / `context` while `task.batch` is disabled
-  - batch calls: missing/empty `tasks`, an item without `task`, duplicate provided names, missing shared `context`, top-level `task` alongside `tasks`
-  - flat calls: missing/empty `task`
-  - unknown or settings-disabled agent type, spawn-policy denial, requesting `isolated` while isolation mode is `none`
-- Isolated execution without a git repo returns `Isolated task execution requires a git repository. ...`; unavailable backends fall back through the PAL candidate list (reported via `fellBack`/`fallbackReason`), other backend errors rethrow, and exhausting every candidate errors with the fallback reason.
-- Job registration failure returns `Failed to start background task job(s): ...`; a batch that schedules only some jobs reports the failed ids in the immediate text and keeps the started ones running.
-- Child failures surface as `SingleResult.exitCode = 1` with `stderr`/`error` populated; the async job is marked failed but the delivery text still carries the output plus a follow-up/transcript hint.
-- If the child omits `yield`, `finalizeSubprocessOutput(...)` injects warnings such as `SYSTEM WARNING: Subagent exited without calling yield tool after 3 reminders.`
-- `agent://<id>` resolution errors are model-visible when another tool reads them: no session, no artifacts dir, missing id, conflicting extraction syntax, or invalid JSON for extraction.
+## 错误
+- 参数校验失败会以普通工具文本返回，带空的 `results`：
+  - `schema`（从不接受）
+  - `task.batch` 关闭时的 `tasks` / `context`
+  - 批量调用：缺失/空的 `tasks`、没有 `task` 的条目、重复的提供名称、缺失共享 `context`、与 `tasks` 并存的顶层 `task`
+  - 扁平调用：缺失/空的 `task`
+  - 未知或设置中禁用的 agent 类型、派生策略拒绝、在隔离模式为 `none` 时请求 `isolated`
+- 没有 git 仓库的隔离执行返回 `Isolated task execution requires a git repository. ...`；不可用的后端会经 PAL 候选列表回退（通过 `fellBack`/`fallbackReason` 报告），其他后端错误会重新抛出，耗尽所有候选时以回退原因报错。
+- 作业注册失败返回 `Failed to start background task job(s): ...`；只调度了部分作业的批处理会在即时文本中报告失败的 id，并让已启动的作业继续运行。
+- 子级失败呈现为 `SingleResult.exitCode = 1`，带填充的 `stderr`/`error`；异步作业被标记为失败，但投递文本仍携带输出以及后续/transcript 提示。
+- 若子级省略 `yield`，`finalizeSubprocessOutput(...)` 会注入警告，例如 `SYSTEM WARNING: Subagent exited without calling yield tool after 3 reminders.`
+- 当其他工具读取 `agent://<id>` 时，其解析错误对模型可见：没有会话、没有工件目录、缺失 id、冲突的提取语法，或用于提取的 JSON 无效。
 
-## Notes
-- Parallelism is parallel `task` calls in one assistant message — or, with `task.batch`, a `tasks[]` batch in one call; either way the session-scoped semaphore bounds the fan-out. With `async.enabled=true`, each spawn is an independent background job.
-- Shared background convention without batch mode: write it once to a `local://` file and reference that path in each spawn's `task` — subagents share the parent's `local://` root. With `task.batch`, the required `context` parameter carries the shared background directly into each spawn's system prompt.
-- Prefer messaging an existing agent (`hub`) over a fresh spawn for follow-up work: it already holds the relevant context. `hub` op:"list" shows idle/parked candidates; messaging a parked agent revives it. `history://<id>` shows what an agent has done.
-- Peer-messaging availability is derived, not configured (`isIrcEnabled` in `packages/coding-agent/src/tools/hub/messaging.ts`): it exists exactly when there is someone to message — the session can spawn subagents, or it is a subagent itself. Messaging is the only follow-up path to a finished subagent, so task without hub messaging would strand idle agents.
-- Agent discovery precedence is first-wins by exact name: project `.omp` agents before user `.omp`, then OMP extension-package `agents/` roots in `listOmpExtensionRoots` order (CLI, project setting, user setting, installed npm/link plugins), Claude marketplace plugin agents (project before user), and bundled agents. Direct `.claude/agents`, `.codex/agents`, and `.gemini/agents` roots are skipped. Create-time discovery is memoized per cwd for the prompt description; execution-time discovery stays fresh.
-- Child sessions do not inherit conversation history. Built-in carry-over is the workspace tree/skills/context files, the shared `local://` root, and the approved-plan reference when one exists.
-- When the parent passes `mcpManager`, child sessions disable standalone MCP discovery and get proxy tools that reuse parent connections.
-- Branch-mode merge temporarily stashes the parent repo before cherry-picking; a stash-pop conflict does not unmerge the cherry-picked commits — they stay on HEAD, the stash entry is preserved, and the conflict is surfaced separately as `stashConflict`. Patch mode only applies the combined root patch when `git.patch.canApplyText(...)` succeeds; failures leave the `.patch` artifact for manual handling.
-- Nested git repos are diffed independently inside isolated workspaces and merged separately with `applyNestedPatches(...)`.
-- `agent://` ids are name-based (`Task` first, `Task-2`/`Task-3` only when the name repeats, nested like `Parent.Child`) by `AgentOutputManager`; this is what prevents artifact collisions across repeated or nested invocations.
+## 备注
+- 并行是指一条助手消息中的并行 `task` 调用——或者，使用 `task.batch` 时，一次调用中的 `tasks[]` 批；无论哪种方式，会话级信号量都会限制扇出。当 `async.enabled=true` 时，每次派生都是独立的后台作业。
+- 不用批量模式的共享背景约定：把它一次性写入 `local://` 文件，并在每次派生的 `task` 中引用该路径——子代理共享父级的 `local://` 根目录。使用 `task.batch` 时，必需的 `context` 参数把共享背景直接带进每次派生的系统提示词。
+- 后续工作优先用消息联系已有 agent（`hub`）而不是重新派生：它已经持有相关上下文。`hub` op:"list" 显示 idle/parked 候选；给已停放 agent 发消息会复活它。`history://<id>` 显示 agent 做过什么。
+- 对等消息可用性是推导出来的而非配置的（`packages/coding-agent/src/tools/hub/messaging.ts` 中的 `isIrcEnabled`）：恰好当存在可消息对象时它才存在——会话可以派生子代理，或者它本身是子代理。消息是联系已结束子代理的唯一后续路径，因此没有 hub 消息的 task 会让 idle agent 搁浅。
+- agent 发现优先级按精确名称先到先得：项目 `.omp` agent 先于用户 `.omp`，然后是 `listOmpExtensionRoots` 顺序（CLI、项目设置、用户设置、已安装 npm/link 插件）中的 OMP 扩展包 `agents/` 根目录、Claude marketplace 插件 agent（项目先于用户）与内置 agent。直接的 `.claude/agents`、`.codex/agents` 与 `.gemini/agents` 根目录会被跳过。创建时的发现按 cwd memo 化用于提示词描述；执行时的发现保持新鲜。
+- 子会话不继承会话历史。内置的延续内容是工作区树/技能/上下文文件、共享的 `local://` 根目录，以及存在时的已批准 plan 引用。
+- 当父级传入 `mcpManager` 时，子会话禁用独立的 MCP 发现，并得到复用父级连接的代理工具。
+- 分支模式合并会在 cherry-pick 前临时 stash 父仓库；stash pop 冲突不会取消已 cherry-pick 的提交——它们留在 HEAD 上，stash 条目被保留，冲突作为 `stashConflict` 单独呈现。补丁模式只在 `git.patch.canApplyText(...)` 成功时应用组合的根补丁；失败会留下 `.patch` 工件供手动处理。
+- 嵌套 git 仓库在隔离工作区内独立 diff，并用 `applyNestedPatches(...)` 单独合并。
+- `agent://` id 基于名称（`Task` 优先，名称重复时才出现 `Task-2`/`Task-3`，嵌套如 `Parent.Child`），由 `AgentOutputManager` 处理；这正是防止重复或嵌套调用间工件冲突的原因。

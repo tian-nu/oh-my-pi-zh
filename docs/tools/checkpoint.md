@@ -1,62 +1,62 @@
 # checkpoint
 
-> Mark the current top-level conversation state so later `rewind` can collapse exploratory context into a report.
+> 标记当前顶层对话状态，以便之后的 `rewind` 能把探索性上下文收拢成一份报告。
 
-## Source
-- Entry: `packages/coding-agent/src/tools/checkpoint.ts`
-- Model-facing prompt: `packages/coding-agent/src/prompts/tools/checkpoint.md`
-- Key collaborators:
-  - `packages/coding-agent/src/session/agent-session.ts` — captures the active checkpoint after tool success.
-  - `packages/coding-agent/src/session/session-manager.ts` — persists the normal session entry stream; not the active checkpoint marker.
-  - `packages/coding-agent/src/tools/index.ts` — registers the tool and gates it behind `checkpoint.enabled`.
-  - `packages/coding-agent/src/config/settings-schema.ts` — defines the disabled-by-default feature flag.
+## 源码
+- 入口：`packages/coding-agent/src/tools/checkpoint.ts`
+- 面向模型的 prompt：`packages/coding-agent/src/prompts/tools/checkpoint.md`
+- 关键协作者：
+  - `packages/coding-agent/src/session/agent-session.ts` — 工具成功后捕获活动 checkpoint。
+  - `packages/coding-agent/src/session/session-manager.ts` — 持久化常规会话条目流；不持久化活动 checkpoint 标记。
+  - `packages/coding-agent/src/tools/index.ts` — 注册该工具，并用 `checkpoint.enabled` 门控。
+  - `packages/coding-agent/src/config/settings-schema.ts` — 定义默认关闭的功能开关。
 
-## Registration / Visibility
-- Tool metadata: `approval = "read"`, `strict = true`, `loadMode = "discoverable"`. Execution is single-shot; the tool does not stream progress updates.
-- Registration requires `checkpoint.enabled = true` (default `false`).
-- Top-level sessions receive the tool when enabled. Subagents do not discover it by default, but may receive it through an explicit `tools:`/requested-tools list.
-- `checkpoint` and `rewind` are a safety pair: when either name is explicitly requested while the feature is enabled, registration automatically includes the other.
-- In an ordinary `tools.xdev` session, discoverable built-ins may be presented as `xd://checkpoint`; an explicitly requested tool remains top-level.
+## 注册 / 可见性
+- 工具元数据：`approval = "read"`、`strict = true`、`loadMode = "discoverable"`。执行为一次性；工具不流式输出进度更新。
+- 注册要求 `checkpoint.enabled = true`（默认 `false`）。
+- 顶层会话在启用时收到该工具。子 agent 默认不发现它，但可以通过显式 `tools:`/请求工具列表收到它。
+- `checkpoint` 与 `rewind` 是一对安全组合：在该功能启用期间显式请求任一名称时，注册会自动包含另一个。
+- 在普通 `tools.xdev` 会话中，可发现的 built-ins 可能以 `xd://checkpoint` 呈现；显式请求的工具仍保持顶层。
 
-## Inputs
+## 输入
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `goal` | `string` | Yes | Investigation goal. Required by the schema and echoed unchanged in the tool result; the implementation does not trim it or reject an empty string. |
+| `goal` | `string` | 是 | 调查目标。schema 必填，并在工具结果中原样回显；实现不会 trim 它，也不会拒绝空字符串。 |
 
-## Outputs
-The tool returns a single text result plus structured details:
+## 输出
+该工具返回单个文本结果，外加结构化 details：
 
-- text body:
+- 文本正文：
   - `Checkpoint created.`
   - `Goal: <goal>`
   - `Run your investigation, then call rewind with a concise report.`
-- `details`:
+- `details`：
   - `goal: string`
-  - `startedAt: string` — ISO timestamp created inside `CheckpointTool.execute()`
+  - `startedAt: string` — 在 `CheckpointTool.execute()` 内创建的 ISO 时间戳
 
-No checkpoint ID, artifact URI, job handle, file path, or restore token is returned.
+不返回 checkpoint ID、工件 URI、任务句柄、文件路径或恢复 token。
 
-## Flow
-1. Tool registration in `packages/coding-agent/src/tools/index.ts` enforces `checkpoint.enabled` and the top-level/explicit-subagent visibility rules. `CheckpointTool.createIf()` itself always constructs the tool.
-2. `CheckpointTool.execute()` rejects nested checkpoints with `ToolError("Checkpoint already active.")` when `session.getCheckpointState?.()` is already set.
-3. It creates `startedAt = new Date().toISOString()` and returns a normal `toolResult()` payload. The tool method itself does not mutate checkpoint state.
-4. On the later successful checkpoint tool-result event, `AgentSession` captures three runtime fields:
-   - `checkpointMessageCount` — current `agent.state.messages.length`, after the checkpoint tool result has already been appended
-   - `checkpointEntryId` — `sessionManager.getEntries().at(-1)?.id ?? null`, i.e. the last persisted session entry ID at checkpoint time
-   - `startedAt` — copied from tool details or regenerated
-5. `AgentSession` stores that object in `#checkpointState`, clears `#pendingRewindReport`, and clears the prior `#lastCompletedRewind`.
-6. On resume, session switch, or tree navigation, `#rehydrateCheckpointRewindState()` scans the current persisted branch. A most-recent successful checkpoint without a later retained rewind report reconstructs the active checkpoint boundary and guard.
+## 流程
+1. `packages/coding-agent/src/tools/index.ts` 中的工具注册强制 `checkpoint.enabled` 与顶层/显式子 agent 可见性规则。`CheckpointTool.createIf()` 本身总是构造该工具。
+2. 当 `session.getCheckpointState?.()` 已设置时，`CheckpointTool.execute()` 以 `ToolError("Checkpoint already active.")` 拒绝嵌套 checkpoint。
+3. 它创建 `startedAt = new Date().toISOString()` 并返回普通 `toolResult()` 载荷。工具方法本身不修改 checkpoint 状态。
+4. 在之后成功的 checkpoint 工具结果事件上，`AgentSession` 捕获三个运行时字段：
+   - `checkpointMessageCount` — 当前 `agent.state.messages.length`，在 checkpoint 工具结果已追加之后
+   - `checkpointEntryId` — `sessionManager.getEntries().at(-1)?.id ?? null`，即 checkpoint 时刻最后一条持久化的会话条目 ID
+   - `startedAt` — 从工具 details 复制，或重新生成
+5. `AgentSession` 把该对象存入 `#checkpointState`，清除 `#pendingRewindReport`，并清除先前的 `#lastCompletedRewind`。
+6. 在恢复、会话切换或树导航时，`#rehydrateCheckpointRewindState()` 扫描当前持久化分支。最近的、且之后没有保留的 rewind 报告的成功 checkpoint，会重建活动 checkpoint 边界与守卫。
 
-## Side Effects
-- Session state (transcript, memory, jobs, checkpoints, registries)
-  - Sets `AgentSession.#checkpointState` in memory.
-  - Records the checkpoint boundary as a message count plus the persisted checkpoint tool-result entry ID.
-  - The ordinary successful tool-result entry is enough to reconstruct an unfinished checkpoint after resume; there is no separate checkpoint-marker entry.
-  - Enables the later settle guard: if a checkpoint is active and no rewind report is pending, `#enforceRewindBeforeYield()` injects a developer-role warning and schedules another turn.
-- User-visible prompts / interactive UI
-  - The tool result tells the model to call `rewind` after the investigation.
-  - If the agent tries to `yield` first, `AgentSession` injects:
+## 副作用
+- 会话状态（transcript、memory、jobs、checkpoints、registries）
+  - 在内存中设置 `AgentSession.#checkpointState`。
+  - 把 checkpoint 边界记录为消息数加持久化的 checkpoint 工具结果条目 ID。
+  - 常规的成功工具结果条目足以在恢复后重建未完成的 checkpoint；没有单独的 checkpoint 标记条目。
+  - 启用后续的 settle 守卫：若 checkpoint 活动且没有待处理的 rewind 报告，`#enforceRewindBeforeYield()` 会注入一条 developer-role 警告并安排另一个回合。
+- 用户可见的 prompt / 交互式 UI
+  - 工具结果告诉模型在调查后调用 `rewind`。
+  - 若 agent 先试图 `yield`，`AgentSession` 会注入：
 
 ```text
 <system-warning>
@@ -64,25 +64,25 @@ You are in an active checkpoint. You MUST call rewind with your investigation fi
 </system-warning>
 ```
 
-## Limits & Caps
-- Availability is gated by `checkpoint.enabled`, default `false`.
-- Only one active checkpoint is allowed per session or subagent.
-- Subagents require an explicit requested-tools entry; requesting either checkpoint tool auto-includes its sister.
-- Checkpoint state is not persisted as a dedicated entry. It is reconstructed from the successful checkpoint tool-result entry on the active branch, including after process resume.
-- Session persistence applies to the ordinary checkpoint tool-call/result messages. Global session persistence truncation is `MAX_PERSIST_CHARS = 500_000` in `packages/coding-agent/src/session/session-persistence.ts`.
+## 限制与上限
+- 可用性由 `checkpoint.enabled` 门控，默认 `false`。
+- 每个会话或子 agent 只允许一个活动 checkpoint。
+- 子 agent 需要显式的请求工具条目；请求任一 checkpoint 工具会自动包含其姊妹工具。
+- Checkpoint 状态不作为专用条目持久化。它从活动分支上成功的 checkpoint 工具结果条目重建，包括进程恢复之后。
+- 会话持久化适用于常规 checkpoint 工具调用/结果消息。全局会话持久化截断是 `packages/coding-agent/src/session/session-persistence.ts` 中的 `MAX_PERSIST_CHARS = 500_000`。
 
-## Errors
-- `ToolError("Checkpoint already active.")` — thrown when a prior checkpoint has not been rewound or cleared.
-- The tool body has no local `try/catch`; unexpected exceptions propagate.
+## 错误
+- `ToolError("Checkpoint already active.")` — 先前的 checkpoint 未被 rewind 或清除时抛出。
+- 工具正文没有本地 `try/catch`；意外异常向上传播。
 
-## Notes
-- Despite the summary string `Create a git-based checkpoint to save and restore session state`, the implementation does not call git and does not snapshot filesystem state.
-- Captured state is conversation/session metadata only:
-  - in-memory message count
-  - persisted checkpoint tool-result entry ID in the session tree
-  - timestamp
-- Not captured:
-  - working tree contents or staged changes
-  - artifacts or blob-store contents
-  - SQLite prompt-history rows from `packages/coding-agent/src/session/history-storage.ts`
-  - auth or agent records from `packages/coding-agent/src/session/agent-storage.ts`
+## 备注
+- 尽管摘要字符串写着 `Create a git-based checkpoint to save and restore session state`，该实现不调用 git，也不对文件系统状态做快照。
+- 捕获的状态只是对话/会话元数据：
+  - 内存中的消息数
+  - 会话树中持久化的 checkpoint 工具结果条目 ID
+  - 时间戳
+- 不捕获：
+  - 工作树内容或已暂存变更
+  - 工件或 blob-store 内容
+  - `packages/coding-agent/src/session/history-storage.ts` 中的 SQLite prompt-history 行
+  - `packages/coding-agent/src/session/agent-storage.ts` 中的 auth 或 agent 记录

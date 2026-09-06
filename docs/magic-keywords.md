@@ -1,16 +1,16 @@
-# Magic keywords
+# 魔法关键词
 
-Magic keywords are standalone prose words in a user prompt that can add hidden, user-attributed instructions for that turn. Notice injection is enabled by default. The TUI highlights recognized words with animated gradients while editing and static gradients in sent messages; highlighting is a visual affordance and currently remains even when notice injection is disabled in settings.
+魔法关键词（Magic keywords）是用户 prompt 中可独立出现的纯文本词，能为该回合添加隐藏的、归属于用户的指令。通知注入默认启用。TUI 在编辑时用动画渐变、在已发送消息中用静态渐变高亮已识别的词；高亮是一种视觉提示，目前在设置中禁用通知注入时仍会保留。
 
-## Keywords
+## 关键词
 
-| Keyword       | Effect                                                                                                                                                                                                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ultrathink`  | Adds a careful multi-step reasoning notice. When automatic thinking is active, it also selects the highest reasoning effort supported by the current model for that turn.                                                                                                                                                 |
-| `orchestrate` | Adds the multi-agent orchestration contract: scope the full task, delegate substantial independent work in parallel, verify each phase, and continue until the request is complete.                                                                                                                                       |
-| `workflowz`   | Adds a deterministic multi-subagent workflow contract centered on the persistent `eval` kernel's `agent()`, `completion()`, handle, `wait()`, and `workpool()` helpers. It is intended for broad research, reviews, migrations, and adversarial coverage. The notice is injected only when both `eval` and `task` are active. |
+| 关键词         | 效果                                                                                                                                                                                                                                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ultrathink`   | 添加一条仔细的多步推理通知。自动思考启用时，还会为该回合选择当前模型支持的最高思考档位。                                                                                                                                                                                                             |
+| `orchestrate`  | 添加多 agent 编排契约：规划整个任务的范围，并行委派大量独立工作，验证每个阶段，并持续推进直到请求完成。                                                                                                                                                                                               |
+| `workflowz`    | 添加一个确定性的多子 agent workflow 契约，围绕持久 `eval` 内核的 `agent()`、`completion()`、句柄、`wait()` 与 `workpool()` 辅助函数展开。它面向广泛的研究、评审、迁移与对抗性覆盖。仅在 `eval` 与 `task` 都激活时才注入该通知。                                                                      |
 
-Use the keyword anywhere in the prose of the prompt:
+在 prompt 的正文任意位置使用关键词：
 
 ```text
 ultrathink about the failure modes before changing this API
@@ -20,19 +20,19 @@ orchestrate the migration described in docs/plan.md
 workflowz an adversarial review of the authentication changes
 ```
 
-## Matching rules
+## 匹配规则
 
-Matching is deliberate so source code and paths do not accidentally change agent behavior:
+匹配是经过斟酌的，让源码与路径不会意外改变 agent 行为：
 
-- Use the exact lowercase spelling. `Ultrathink`, `Orchestrate`, and `Workflowz` do not trigger.
-- The keyword must be standalone prose. Sentence punctuation and quotes may touch it, but letters, digits, underscores, slashes, backslashes, hyphens, file extensions, symbol references, and call syntax do not match. For example, `orchestrate,` matches; `orchestrated`, `orchestrate.ts`, `foo::orchestrate`, and `orchestrate()` do not.
-- Fenced code blocks (backticks or tildes), inline code spans, HTML/XML comments/tags/elements, and their contents are ignored.
-- All enabled keywords in one prompt may add their own notice. The visible word remains in the user message; hidden notices are non-displayed custom messages attributed to the user.
-- The instruction applies only to the turn containing the keyword.
+- 使用精确的小写拼写。`Ultrathink`、`Orchestrate` 与 `Workflowz` 不会触发。
+- 关键词必须是独立的纯文本词。句末标点与引号可以贴着它，但字母、数字、下划线、斜杠、反斜杠、连字符、文件扩展名、符号引用与调用语法都不匹配。例如 `orchestrate,` 匹配；`orchestrated`、`orchestrate.ts`、`foo::orchestrate` 与 `orchestrate()` 不匹配。
+- 围栏代码块（反引号或波浪号）、inline code 片段、HTML/XML 注释/标签/元素及其内容会被忽略。
+- 同一 prompt 中所有启用的关键词都可以添加各自的通知。可见的词保留在用户消息中；隐藏通知是不可显示的、归属于用户的自定义消息。
+- 该指令只作用于包含该关键词的那个回合。
 
-## Configuration
+## 配置
 
-Open `/settings` and use **Interaction → Magic Keywords**, or change the settings from a shell:
+打开 `/settings` 并使用 **Interaction → Magic Keywords**，或从 shell 修改设置：
 
 ```bash
 # Disable every magic keyword
@@ -44,4 +44,4 @@ omp config set magicKeywords.orchestrate false
 omp config set magicKeywords.workflow false
 ```
 
-The global switch and three per-keyword switches default to `true`. The global switch gates every hidden notice; a per-keyword switch gates only that notice (and ultrathink's maximum-auto-thinking override). These settings do not currently disable the editor/message gradient. Run `omp config list` to inspect every setting and its current value. See [Settings](./settings.md) for configuration scopes, precedence, and project-local overrides.
+全局开关与三个按关键词的开关默认都是 `true`。全局开关门控所有隐藏通知；按关键词的开关只门控那一条通知（以及 ultrathink 的最大自动思考覆盖）。这些设置目前不会禁用编辑器/消息渐变。运行 `omp config list` 可检视每个设置及其当前值。配置作用域、优先级与项目本地覆盖见 [Settings](./settings.md)。

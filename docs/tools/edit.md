@@ -1,35 +1,35 @@
 # edit
 
-> Applies source edits. The default `hashline` mode consumes one line-anchored patch string and edits existing files directly.
+> 应用源代码编辑。默认的 `hashline` 模式消费一条以行锚定的补丁字符串，并直接编辑已有文件。
 
-## Source
-- Entry and mode registration: `packages/coding-agent/src/edit/index.ts`
-- Hashline schema: `packages/coding-agent/src/edit/hashline/params.ts`
-- Model-facing hashline prompt: `packages/hashline/src/prompt.md`
-- Canonical constrained-decoding grammar: `packages/hashline/src/grammar.lark`
-- Parser and application: `packages/hashline/src/input.ts`, `packages/hashline/src/parser.ts`, `packages/hashline/src/apply.ts`
-- Snapshot validation/recovery: `packages/hashline/src/snapshots.ts`, `packages/hashline/src/patcher.ts`, `packages/hashline/src/recovery.ts`
-- Coding-agent execution/result shaping: `packages/coding-agent/src/edit/hashline/execute.ts`
-- Streaming preview strategy: `packages/coding-agent/src/edit/streaming.ts`, `packages/coding-agent/src/edit/hashline/diff.ts`
+## 源码位置
+- 入口与模式注册：`packages/coding-agent/src/edit/index.ts`
+- hashline schema：`packages/coding-agent/src/edit/hashline/params.ts`
+- 面向模型的 hashline 提示词：`packages/hashline/src/prompt.md`
+- 规范的受限解码语法：`packages/hashline/src/grammar.lark`
+- 解析与应用：`packages/hashline/src/input.ts`、`packages/hashline/src/parser.ts`、`packages/hashline/src/apply.ts`
+- 快照校验/恢复：`packages/hashline/src/snapshots.ts`、`packages/hashline/src/patcher.ts`、`packages/hashline/src/recovery.ts`
+- coding-agent 执行/结果整形：`packages/coding-agent/src/edit/hashline/execute.ts`
+- 流式预览策略：`packages/coding-agent/src/edit/streaming.ts`、`packages/coding-agent/src/edit/hashline/diff.ts`
 
-## Mode selection and availability
+## 模式选择与可用性
 
-`edit` is an essential built-in tool. `resolveEditMode()` selects the active wire contract in this order:
+`edit` 是一个内置核心工具。`resolveEditMode()` 按以下顺序选择生效的线上（wire）契约：
 
-1. model-specific configured variant;
-2. `PI_EDIT_VARIANT`;
-3. `edit.mode`;
-4. default `hashline`.
+1. 模型特定的已配置变体；
+2. `PI_EDIT_VARIANT`；
+3. `edit.mode`；
+4. 默认 `hashline`。
 
-Supported modes are `hashline`, `apply_patch`, `patch`, and `replace`. Unless `PI_STRICT_EDIT_MODE` is set, a short model exclusion list can replace the default hashline contract with `replace`. This page documents the default hashline contract; the tool's schema, prompt, examples, renderer, and optional custom Lark format all switch with the selected mode. In `apply_patch` custom-tool mode the wire name is `apply_patch`; dispatch still reaches the same internal tool.
+支持的模式有 `hashline`、`apply_patch`、`patch` 与 `replace`。除非设置了 `PI_STRICT_EDIT_MODE`，否则一份简短的模型排除名单可以把默认的 hashline 契约替换为 `replace`。本页记录的是默认的 hashline 契约；工具的 schema、提示词、示例、渲染器以及可选的自定义 Lark 格式都会随所选模式一起切换。在 `apply_patch` 自定义工具模式下，线上名称为 `apply_patch`；分发仍会到达同一个内部工具。
 
-## Input
+## 输入
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 说明 |
 | --- | --- | --- | --- |
-| `input` | `string` | Yes | One or more `[PATH#TAG]` sections containing hashline operations. The strict custom-tool grammar wraps the sections in `*** Begin Patch` / `*** End Patch`; the normal parser also accepts an unwrapped payload. |
+| `input` | `string` | 是 | 一个或多个包含 hashline 操作的 `[PATH#TAG]` 段。严格的 custom-tool 语法会把各段包裹在 `*** Begin Patch` / `*** End Patch` 中；普通解析器也接受未包裹的负载。 |
 
-Each section edits one existing file and MUST copy the four-uppercase-hex snapshot tag from the latest anchored `read`, `grep`, or successful `edit` result:
+每个段编辑一个已有文件，并且必须从最近一次带锚定的 `read`、`grep` 或成功的 `edit` 结果中复制四位大写十六进制快照标签：
 
 ```text
 [src/example.ts#1A2B]
@@ -37,41 +37,41 @@ PUT 4.=4:
 +const value = 2;
 ```
 
-Use `write` to create or wholly overwrite a file. Hashline rejects untagged anchored edits at application time.
+使用 `write` 创建或整体覆盖文件。hashline 会在应用阶段拒绝未带标签的锚定编辑。
 
-## Canonical patch language
+## 规范补丁语法
 
-All line numbers refer to the original tagged snapshot, not to earlier hunks in the same call.
+所有行号都指向原始加标签的快照，而不是同一次调用中更早的 hunk。
 
-| Form | Effect |
+| 形式 | 效果 |
 | --- | --- |
-| `PUT N.=M:` | Replace inclusive original lines `N..M` with the following `+TEXT` rows. |
-| `PUT N*:` | Replace the multi-line syntactic block beginning on line `N`. |
-| `PUT <N:` / `PUT >N:` | Insert body rows immediately before / after line `N`. `PUT <1:` is file head. |
-| `PUT >$:` | Append body rows at file tail. |
-| `PUT >N*:` | Insert after the syntactic block beginning on line `N`. |
-| `CUT N.=M` / `CUT N*` | Delete and capture an inclusive range or resolved block. Add `@name` to write a named register. |
-| `PUT <N` / `PUT >N` / `PUT >$` | Paste the anonymous register into a gap. |
-| `PUT <N @name` / `PUT >N @name` / `PUT >$ @name` | Paste a named register into a gap. |
-| `PUT N.=M @name` / `PUT N* @name` | Replace a range or block with a named register. Named registers are required for span/block paste. |
-| `REM` | Delete the section file. |
-| `MV DEST` | Move/rename the section file after any preceding edits in that section. Quote destinations containing spaces. |
+| `PUT N.=M:` | 用随后的 `+TEXT` 行替换包含首尾的原始行 `N..M`。 |
+| `PUT N*:` | 替换从第 `N` 行开始的多行语法块。 |
+| `PUT <N:` / `PUT >N:` | 在第 `N` 行之前 / 之后立即插入正文行。`PUT <1:` 表示文件头部。 |
+| `PUT >$:` | 在文件末尾追加正文行。 |
+| `PUT >N*:` | 在从第 `N` 行开始的语法块之后插入。 |
+| `CUT N.=M` / `CUT N*` | 删除并捕获一个包含首尾的范围或已解析的块。添加 `@name` 可写入命名寄存器。 |
+| `PUT <N` / `PUT >N` / `PUT >$` | 把匿名寄存器粘贴到间隙中。 |
+| `PUT <N @name` / `PUT >N @name` / `PUT >$ @name` | 把命名寄存器粘贴到间隙中。 |
+| `PUT N.=M @name` / `PUT N* @name` | 用命名寄存器替换一个范围或块。span/块粘贴必须使用命名寄存器。 |
+| `REM` | 删除该段的文件。 |
+| `MV DEST` | 在该段完成任何前置编辑后移动/重命名该段的文件。含空格的路径目标需加引号。 |
 
-Register names contain ASCII letters, digits, `_`, or `-`. The anonymous register is batch-local and starts empty on every call. Named registers persist for the session and are published only after their writes land. Operations run top-to-bottom across sections, so a cut in an earlier section can feed a later paste. Repeating a paste does not consume its register.
+寄存器名称只能包含 ASCII 字母、数字、`_` 或 `-`。匿名寄存器是批次局部的，每次调用开始时为空。命名寄存器在会话期间持续存在，并且只在其写入落地后才发布。操作按段自上而下执行，因此较早段中的剪切可以供给较晚的粘贴。重复粘贴不会消耗其寄存器。
 
-Only body-bearing `PUT ...:` headers take body rows. Every body row is `+TEXT`; `+` alone inserts a blank line. The body is final content, never a unified-diff before/after pair. Literal content beginning with `-` or `+` is written as `+-...` or `++...`. `CUT`, register-backed `PUT`, `REM`, and `MV` take no body.
+只有带正文的 `PUT ...:` 头会接受正文行。每个正文行都是 `+TEXT`；单独的 `+` 插入一个空行。正文是最终内容，绝不是统一 diff 的前/后配对。以 `-` 或 `+` 开头的字面内容写作 `+-...` 或 `++...`。`CUT`、基于寄存器的 `PUT`、`REM` 与 `MV` 不接受正文。
 
-### Block anchors
+### 块锚点
 
-Block forms resolve from the opening line through the tree-sitter node's end. Anchor the construct opener, never a closing delimiter, last visible line, blank line, or inner statement. A single-line node is rejected with guidance to use the corresponding explicit-line operation. `PUT >N*:` lowers to ordinary `PUT >N:` with a warning when no block resolves; replace/cut block forms fail instead of guessing.
+块形式从起始行一直到 tree-sitter 节点的结尾来解析。请锚定构造体的起始处，绝不要锚定结束分隔符、最后可见行、空行或内部语句。单行节点会被拒绝，并提示改用对应的显式行操作。当没有可解析的块时，`PUT >N*:` 会降级为普通的 `PUT >N:` 并给出警告；replace/cut 的块形式则会失败而不是猜测。
 
-Leading decorators, attributes, and doc-comments may be separate syntax nodes. Anchor the first decorator when the parser groups it with the declaration; otherwise use an explicit range. Standalone line comments are not swept automatically. In Markdown, a heading's block includes its body and deeper subsections through the next heading of equal or higher level.
+前导的装饰器、属性与文档注释可能是独立的语法节点。当解析器把第一个装饰器与声明归为一组时，锚定第一个装饰器；否则使用显式范围。独立的行注释不会被自动纳入。在 Markdown 中，一个标题的块会包含其正文以及更深的子节，直到下一个同级或更高级别的标题。
 
-Use tight ranges and separate non-adjacent changes. Do not use `edit` merely to reformat or restyle code; run the project's formatter after the substantive edit.
+使用紧凑的范围，并把不相邻的改动分开。不要仅仅为了重排格式或调整风格而使用 `edit`；在实质性编辑之后运行项目的格式化器。
 
-## Examples
+## 示例
 
-Given:
+给定：
 
 ```text
 [greet.py#A1B2]
@@ -82,7 +82,7 @@ Given:
 5:greet("world")
 ```
 
-Replace the decorated function without touching its caller:
+替换被装饰的函数，而不改动其调用方：
 
 ```text
 *** Begin Patch
@@ -94,7 +94,7 @@ PUT 1*:
 *** End Patch
 ```
 
-Move it to another previously-read file using a named register:
+使用命名寄存器把它移动到另一个之前读过的文件：
 
 ```text
 *** Begin Patch
@@ -105,7 +105,7 @@ PUT <1 @fn
 *** End Patch
 ```
 
-Rename after editing:
+编辑后重命名：
 
 ```text
 *** Begin Patch
@@ -116,35 +116,35 @@ MV lib/welcome.py
 *** End Patch
 ```
 
-## Output and side effects
+## 输出与副作用
 
-Hashline applies in one tool call; it does not use the staged `xd://resolve` / `xd://reject` flow used by `ast_edit`.
+hashline 在一次工具调用内完成应用；它不使用 `ast_edit` 所使用的暂存 `xd://resolve` / `xd://reject` 流程。
 
-A successful section returns a fresh `[path#TAG]` header, optional block-resolution and move lines, a compact post-edit preview when available, and a `Warnings:` block when recovery or normalization produced warnings. `EditToolDetails` can include the unified `diff`, `firstChangedLine`, diagnostics/format results, operation (`update` or `delete` in hashline mode), path/move metadata, snapshots, and per-file results. Multi-section input returns one aggregate result.
+一个成功的段会返回新的 `[path#TAG]` 头、可选的块解析与移动行、可用的紧凑编辑后预览，以及在恢复或规范化产生警告时的 `Warnings:` 块。`EditToolDetails` 可包含统一 `diff`、`firstChangedLine`、诊断/格式化结果、操作（hashline 模式下为 `update` 或 `delete`）、路径/移动元数据、快照以及按文件的结果。多段输入返回一个汇总结果。
 
-The streaming renderer parses complete portions of an in-flight payload and computes read-only diffs. Streaming preview skips transient unresolved blocks, stale tags, and empty pastes rather than presenting partial input as a final failure. Execution re-reads and validates normally.
+流式渲染器会解析飞行中（in-flight）负载的完整部分，并计算只读 diff。流式预览会跳过临时的未解析块、过期标签与空粘贴，而不是把部分输入呈现为最终失败。执行阶段会正常地重新读取并校验。
 
-For multi-section calls, every section is parsed and prepared before writes begin so syntax, anchor, and no-op failures fail fast. Files then write in order; an operating-system write failure can leave the already-landed prefix applied. Named-register session state is advanced only for that landed prefix.
+对于多段调用，每个段都会在写入开始前完成解析与准备，因此语法、锚点与无操作失败都能快速失败。随后文件按顺序写入；操作系统级的写入失败可能留下已经落地的前缀。命名寄存器的会话状态只针对该落地前缀推进。
 
-## Limits and validation
+## 限制与校验
 
-- Snapshot tags are four uppercase hexadecimal characters derived from normalized file content and recorded in the session snapshot store.
-- `read`/`grep` exposure matters: edits targeting lines outside the recorded visible ranges are rejected. Re-read elided or undisplayed ranges before editing them.
-- Ranges are inclusive, must be ordered, and are bounded by a parser amplification limit of 100,000 expanded lines before the target file's actual bounds are checked.
-- Overlapping edits or multiple operations targeting the same original anchor are rejected.
-- Same-path sections are merged so their original line anchors apply together. Clipboard operations are rejected if interleaved same-path sections would make authored register order ambiguous.
-- Stale tags attempt snapshot-based recovery. Recovery applies only when the recorded snapshot chain proves a unique safe result; otherwise a mismatch with current context is returned.
-- A byte-identical edit is an error. Repeating the same no-op payload three times escalates through the no-op loop guard.
+- 快照标签是四位大写十六进制字符，由规范化后的文件内容派生，并记录在会话快照存储中。
+- `read`/`grep` 的暴露范围很重要：针对记录可见范围之外行的编辑会被拒绝。在编辑省略或未显示的范围之前，先重新读取它们。
+- 范围是包含首尾的，必须有序，并且在检查目标文件实际边界之前受限于 100,000 行展开的解析放大限制。
+- 重叠的编辑或针对同一原始锚点的多个操作会被拒绝。
+- 同路径的段会被合并，使其原始行锚点能一起应用。若交错的同路径段会使作者书写的寄存器顺序产生歧义，剪贴板操作会被拒绝。
+- 过期标签会尝试基于快照的恢复。只有当记录的快照链能证明存在唯一安全结果时才应用恢复；否则会返回与当前上下文不匹配的结果。
+- 字节完全相同的编辑是一个错误。重复三次相同的无操作负载会升级触发无操作循环保护。
 
-## Common failures
+## 常见失败
 
-- Missing/malformed `[PATH#TAG]`, unknown snapshot tag, or a path that no longer exists.
-- Anchor outside the file, outside the recorded seen-line ranges, in an elided region, or based on a stale snapshot that cannot be recovered safely.
-- Reversed or overlapping ranges.
-- Empty body for a body-backed `PUT`, body rows under a bodyless operation, unknown named register, or anonymous paste before an unambiguous anonymous cut.
-- Block anchor on an unsupported/invalid syntax tree, blank/closing line, or single-line node.
-- Unified-diff contamination (`@@`, apply-patch sentinels, `-old` rows) instead of hashline operations and final-content `+` rows.
-- `REM` / `MV` conflicts, invalid move destinations, target collisions, or filesystem write failures.
-- A patch that parses and applies to exactly the existing bytes (no change).
+- 缺失/畸形的 `[PATH#TAG]`、未知的快照标签，或已不存在的路径。
+- 锚点在文件之外、在记录的已见行范围之外、在省略区域中，或基于无法安全恢复的过期快照。
+- 顺序颠倒或重叠的范围。
+- 正文型 `PUT` 缺少正文、无正文操作下出现正文行、未知的命名寄存器，或在不明确的匿名剪切之前进行匿名粘贴。
+- 块锚点指向不受支持/无效的语法树、空行/结束行或单行节点。
+- 统一 diff 污染（`@@`、apply-patch 哨兵、`-old` 行）而不是 hashline 操作与最终内容的 `+` 行。
+- `REM` / `MV` 冲突、无效的移动目标、目标碰撞，或文件系统写入失败。
+- 解析并应用后与现有字节完全相同的补丁（没有任何改动）。
 
-The parser has limited recovery for common model slips (optional envelope, benign header noise, some bare rows and range spellings), and surfaces warnings when it repairs input. Callers SHOULD emit only the canonical grammar above; recovery behavior is not a second public syntax.
+解析器对常见的模型失误有有限的恢复能力（可选的外层包裹、良性的头部噪音、部分裸行与范围拼写），并在修复输入时给出警告。调用方应当只输出上述规范语法；恢复行为不是第二种公开语法。

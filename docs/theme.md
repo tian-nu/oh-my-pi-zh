@@ -1,251 +1,251 @@
-# Theming Reference
+# 主题化参考
 
-This document describes how theming works in the coding-agent today: schema, loading, runtime behavior, and failure modes.
+本文档说明主题系统在编程 agent 中的工作方式：schema、加载、运行时行为与失败模式。
 
-## What the theme system controls
+## 主题系统控制什么
 
-The theme system drives:
+主题系统驱动：
 
-- foreground/background color tokens used across the TUI
-- markdown styling adapters (`getMarkdownTheme()`)
-- selector/editor/settings list adapters (`getSelectListTheme()`, `getEditorTheme()`, `getSettingsListTheme()`)
-- symbol preset + symbol overrides (`unicode`, `nerd`, `ascii`)
-- syntax highlighting colors used by native highlighter (`@oh-my-pi/pi-natives`)
-- status line segment colors
+- TUI 各处使用的前景/背景颜色 token
+- markdown 样式适配器（`getMarkdownTheme()`）
+- 选择器/编辑器/设置列表适配器（`getSelectListTheme()`、`getEditorTheme()`、`getSettingsListTheme()`）
+- 符号预设与符号覆盖（`unicode`、`nerd`、`ascii`）
+- 原生高亮器（`@oh-my-pi/pi-natives`）使用的语法高亮颜色
+- 状态行分段颜色
 
-Primary implementation: `src/modes/theme/theme.ts`.
+主要实现：`src/modes/theme/theme.ts`。
 
-## Theme JSON shape
+## Theme JSON 结构
 
-Theme files are JSON objects validated against the runtime schema in `theme.ts` (`themeJsonSchema`) and mirrored by `src/modes/theme/theme-schema.json`.
+主题文件为 JSON 对象，按 `theme.ts`（`themeJsonSchema`）中的运行时 schema 校验，并与 `src/modes/theme/theme-schema.json` 保持一致。
 
-Top-level fields:
+顶层字段：
 
-- `name` (required)
-- `colors` (required; all color tokens required)
-- `vars` (optional; reusable color variables)
-- `export` (optional; HTML export colors)
-- `symbols` (optional)
-  - `preset` (optional: `unicode | nerd | ascii`)
-  - `overrides` (optional: key/value overrides for `SymbolKey`)
+- `name`（必填）
+- `colors`（必填；所有颜色 token 均必填）
+- `vars`（可选；可复用的颜色变量）
+- `export`（可选；HTML 导出颜色）
+- `symbols`（可选）
+  - `preset`（可选：`unicode | nerd | ascii`）
+  - `overrides`（可选：`SymbolKey` 的键/值覆盖）
 
-Color values accept:
+颜色值接受：
 
-- hex string (`"#RRGGBB"`)
-- 256-color index (`0..255`)
-- variable reference string (resolved through `vars`)
-- empty string (`""`) meaning terminal default (`\x1b[39m` fg, `\x1b[49m` bg)
+- hex 字符串（`"#RRGGBB"`）
+- 256 色索引（`0..255`）
+- 变量引用字符串（通过 `vars` 解析）
+- 空字符串（`""`），表示终端默认值（前景 `\x1b[39m`，背景 `\x1b[49m`）
 
-## Required and optional color tokens
+## 必需与可选的颜色 token
 
-All tokens below are required in `colors` except `thinkingMax`, which is optional for compatibility and falls back to `thinkingXhigh`.
+除 `thinkingMax` 外，下面所有 token 在 `colors` 中都是必填的；它仅为兼容性而保留为可选，并回退到 `thinkingXhigh`。
 
-### Core text and borders (11)
+### 核心文本与边框（11）
 
-`accent`, `border`, `borderAccent`, `borderMuted`, `success`, `error`, `warning`, `muted`, `dim`, `text`, `thinkingText`
+`accent`、`border`、`borderAccent`、`borderMuted`、`success`、`error`、`warning`、`muted`、`dim`、`text`、`thinkingText`
 
-### Background blocks (7)
+### 背景块（7）
 
-`selectedBg`, `userMessageBg`, `customMessageBg`, `toolPendingBg`, `toolSuccessBg`, `toolErrorBg`, `statusLineBg`
+`selectedBg`、`userMessageBg`、`customMessageBg`、`toolPendingBg`、`toolSuccessBg`、`toolErrorBg`、`statusLineBg`
 
-### Message/tool text (5)
+### 消息/工具文本（5）
 
-`userMessageText`, `customMessageText`, `customMessageLabel`, `toolTitle`, `toolOutput`
+`userMessageText`、`customMessageText`、`customMessageLabel`、`toolTitle`、`toolOutput`
 
-### Markdown (10)
+### Markdown（10）
 
-`mdHeading`, `mdLink`, `mdLinkUrl`, `mdCode`, `mdCodeBlock`, `mdCodeBlockBorder`, `mdQuote`, `mdQuoteBorder`, `mdHr`, `mdListBullet`
+`mdHeading`、`mdLink`、`mdLinkUrl`、`mdCode`、`mdCodeBlock`、`mdCodeBlockBorder`、`mdQuote`、`mdQuoteBorder`、`mdHr`、`mdListBullet`
 
-### Tool diff + syntax highlighting (12)
+### 工具 diff 与语法高亮（12）
 
-`toolDiffAdded`, `toolDiffRemoved`, `toolDiffContext`,
-`syntaxComment`, `syntaxKeyword`, `syntaxFunction`, `syntaxVariable`, `syntaxString`, `syntaxNumber`, `syntaxType`, `syntaxOperator`, `syntaxPunctuation`
+`toolDiffAdded`、`toolDiffRemoved`、`toolDiffContext`、
+`syntaxComment`、`syntaxKeyword`、`syntaxFunction`、`syntaxVariable`、`syntaxString`、`syntaxNumber`、`syntaxType`、`syntaxOperator`、`syntaxPunctuation`
 
-### Mode/thinking borders (8 required, 1 optional)
+### 模式/思考边框（8 个必填，1 个可选）
 
-`thinkingOff`, `thinkingMinimal`, `thinkingLow`, `thinkingMedium`, `thinkingHigh`, `thinkingXhigh`, optional `thinkingMax`, `bashMode`, `pythonMode`
+`thinkingOff`、`thinkingMinimal`、`thinkingLow`、`thinkingMedium`、`thinkingHigh`、`thinkingXhigh`、可选 `thinkingMax`、`bashMode`、`pythonMode`
 
-### Status line segment colors (13)
+### 状态行分段颜色（13）
 
-`statusLineSep`, `statusLineModel`, `statusLinePath`, `statusLineGitClean`, `statusLineGitDirty`, `statusLineContext`, `statusLineSpend`, `statusLineStaged`, `statusLineDirty`, `statusLineUntracked`, `statusLineOutput`, `statusLineCost`, `statusLineSubagents`
+`statusLineSep`、`statusLineModel`、`statusLinePath`、`statusLineGitClean`、`statusLineGitDirty`、`statusLineContext`、`statusLineSpend`、`statusLineStaged`、`statusLineDirty`、`statusLineUntracked`、`statusLineOutput`、`statusLineCost`、`statusLineSubagents`
 
-## Optional tokens
+## 可选 token
 
-### `export` section (optional)
+### `export` 段（可选）
 
-Used for HTML export theming helpers:
+用于 HTML 导出的主题辅助：
 
 - `export.pageBg`
 - `export.cardBg`
 - `export.infoBg`
 
-If omitted, export code derives defaults from resolved theme colors.
+若省略，导出代码会从解析后的主题颜色推导默认值。
 
-### `symbols` section (optional)
+### `symbols` 段（可选）
 
-- `symbols.preset` sets a theme-level default symbol set.
-- `symbols.overrides` can override individual `SymbolKey` values.
-- `symbols.spinnerFrames` overrides the loading spinner frames. Accepts either a flat `string[]` (applied to both spinner types) or an object `{ "status"?: string[], "activity"?: string[] }` to override each type independently. Any type not specified falls back to the symbol preset's default frames. `status` drives the ~12.5fps spinner used by loaders and tool-execution indicators; `activity` drives the ~30fps spinner used by markdown progress bars and similar high-frequency UI.
+- `symbols.preset` 设置主题级的默认符号集。
+- `symbols.overrides` 可覆盖单个 `SymbolKey` 的值。
+- `symbols.spinnerFrames` 覆盖加载 spinner 帧。接受扁平 `string[]`（应用于两种 spinner 类型）或对象 `{ "status"?: string[], "activity"?: string[] }` 以分别覆盖每种类型；未指定的类型回退到符号预设的默认帧。`status` 驱动加载器和工具执行指示器使用的约 12.5fps spinner，`activity` 驱动 markdown 进度条及类似高频 UI 使用的约 30fps spinner。
 
-Runtime precedence:
+运行时优先级：
 
-1. settings `symbolPreset` override (if set)
-2. theme JSON `symbols.preset`
-3. fallback `"unicode"`
+1. 设置中的 `symbolPreset` 覆盖（若已设置）
+2. theme JSON 中的 `symbols.preset`
+3. 回退 `"unicode"`
 
-Invalid override keys are ignored and logged (`logger.debug`).
+无效的覆盖键会被忽略并记录日志（`logger.debug`）。
 
-#### Box-drawing borders
+#### 框线（box-drawing）边框
 
-All outlined chrome — tool-result frames, overlays, code fences, the editor, the welcome banner — draws with the `boxRound.*` tokens: rounded corners (`╭╮╰╯`) plus tee/cross junctions (`├┤┬┴┼`, which have no rounded Unicode form, so they are sourced from the `boxSharp.*` tokens). Markdown tables are the sole exception and keep the fully sharp `boxSharp.*` set (`┌┐└┘`).
+所有轮廓型 chrome——工具结果框、浮层、代码围栏、编辑器、欢迎横幅——都用 `boxRound.*` token 绘制：圆角（`╭╮╰╯`）加上 T 形/十字接头（`├┤┬┴┼`；这些字符没有圆角 Unicode 形式，因此取自 `boxSharp.*` token）。markdown 表格是唯一例外，使用全尖锐的 `boxSharp.*` 系列（`┌┐└┘`）。
 
-Override behavior follows from that split:
+覆盖行为遵循这一划分：
 
-- `boxRound.{topLeft,topRight,bottomLeft,bottomRight,horizontal,vertical}` restyle every border's corners and edges.
-- `boxSharp.{cross,teeDown,teeUp,teeRight,teeLeft}` restyle dividers/junctions everywhere (rounded frames and tables alike).
-- `boxSharp.{topLeft,topRight,bottomLeft,bottomRight}` now affect markdown table corners only.
+- `boxRound.{topLeft,topRight,bottomLeft,bottomRight,horizontal,vertical}` 重新设置每个边框的角与边的样式。
+- `boxSharp.{cross,teeDown,teeUp,teeRight,teeLeft}` 重新设置各处的分隔线/接头样式（圆角框与表格均适用）。
+- `boxSharp.{topLeft,topRight,bottomLeft,bottomRight}` 现在只影响 markdown 表格的角。
 
-## Built-in vs custom theme sources
+## 内置与自定义主题来源
 
-Theme lookup order (`loadThemeJson`):
+主题查找顺序（`loadThemeJson`）：
 
-1. built-in embedded themes (`dark.json`, `light.json`, and all `defaults/*.json` compiled into `defaultThemes`)
-2. custom theme file: `<customThemesDir>/<name>.json`
+1. 内置嵌入主题（编译进 `defaultThemes` 的 `dark.json`、`light.json` 以及所有 `defaults/*.json`）
+2. 自定义主题文件：`<customThemesDir>/<name>.json`
 
-Custom themes directory comes from `getCustomThemesDir()`:
+自定义主题目录来自 `getCustomThemesDir()`：
 
-- default: `~/.omp/agent/themes`
-- overridden by `PI_CODING_AGENT_DIR` (`$PI_CODING_AGENT_DIR/themes`)
+- 默认：`~/.omp/agent/themes`
+- 可被 `PI_CODING_AGENT_DIR` 覆盖（`$PI_CODING_AGENT_DIR/themes`）
 
-`getAvailableThemes()` returns merged built-in + custom names, sorted, with built-ins taking precedence on name collision.
+`getAvailableThemes()` 返回排序后的内置 + 自定义名称合并结果，名称冲突时内置主题优先。
 
-## Loading, validation, and resolution
+## 加载、校验与解析
 
-For custom theme files:
+对自定义主题文件：
 
-1. read JSON
-2. parse JSON
-3. validate against `themeJsonSchema`
-4. resolve `vars` references recursively
-5. convert resolved values to ANSI by terminal capability mode
+1. 读取 JSON
+2. 解析 JSON
+3. 按 `themeJsonSchema` 校验
+4. 递归解析 `vars` 引用
+5. 按终端能力模式把解析后的值转换为 ANSI
 
-Validation behavior:
+校验行为：
 
-- missing required color tokens: explicit grouped error message
-- bad token types/values: validation errors with JSON path
-- unknown theme file: `Theme not found: <name>`
+- 缺少必需的颜色 token：给出明确的成组错误消息
+- token 类型/值错误：带 JSON path 的校验错误
+- 未知主题文件：`Theme not found: <name>`
 
-Var reference behavior:
+变量引用行为：
 
-- supports nested references
-- throws on missing variable reference
-- throws on circular references
+- 支持嵌套引用
+- 引用缺失变量时抛出异常
+- 循环引用时抛出异常
 
-## Terminal color mode behavior
+## 终端颜色模式行为
 
-Color mode detection (`detectColorMode`):
+颜色模式检测（`detectColorMode`）：
 
 - `COLORTERM=truecolor|24bit` => truecolor
 - `WT_SESSION` => truecolor
-- `TERM` in `dumb`, `linux`, or empty => 256color
-- otherwise => truecolor
+- `TERM` 为 `dumb`、`linux` 或空 => 256color
+- 否则 => truecolor
 
-Conversion behavior:
+转换行为：
 
 - hex -> `Bun.color(..., "ansi-16m" | "ansi-256")`
-- numeric -> `38;5` / `48;5` ANSI
-- `""` -> default fg/bg reset
+- 数值 -> `38;5` / `48;5` ANSI
+- `""` -> 重置为默认前景/背景
 
-## Runtime switching behavior
+## 运行时切换行为
 
-### Initial theme (`initTheme`)
+### 初始主题（`initTheme`）
 
-`main.ts` initializes theme with settings:
+`main.ts` 用以下设置初始化主题：
 
 - `symbolPreset`
 - `colorBlindMode`
 - `theme.dark`
 - `theme.light`
 
-Auto theme slot selection uses terminal appearance in this order:
+自动主题槽位选择按以下顺序依据终端外观：
 
-1. terminal-reported OSC 11 background luminance, unless the macOS/Zellij fallback path is active
-2. `COLORFGBG` background index (`< 8` => dark, `>= 8` => light)
-3. macOS appearance fallback only for the known-broken macOS/Zellij OSC 11 path
-4. dark slot fallback
+1. 终端报告的 OSC 11 背景亮度（除非 macOS/Zellij 回退路径生效）
+2. `COLORFGBG` 背景索引（`< 8` => dark，`>= 8` => light）
+3. 仅对已知有问题的 macOS/Zellij OSC 11 路径使用 macOS 外观回退
+4. dark 槽位回退
 
-Current defaults from settings schema:
+设置 schema 中的当前默认值：
 
 - `theme.dark = "titanium"`
 - `theme.light = "light"`
 - `symbolPreset = "unicode"`
 - `colorBlindMode = false`
 
-### Explicit switching (`setTheme`)
+### 显式切换（`setTheme`）
 
-- loads selected theme
-- updates global `theme` singleton
-- optionally starts watcher
-- triggers `onThemeChange` callback
+- 加载所选主题
+- 更新全局 `theme` 单例
+- 可选启动 watcher
+- 触发 `onThemeChange` 回调
 
-On failure:
+失败时：
 
-- falls back to built-in `dark`
-- returns `{ success: false, error }`
+- 回退到内置 `dark`
+- 返回 `{ success: false, error }`
 
-### Preview switching (`previewTheme`)
+### 预览切换（`previewTheme`）
 
-- applies temporary preview theme to global `theme`
-- does **not** change persisted settings by itself
-- returns success/error without fallback replacement
+- 把临时预览主题应用到全局 `theme`
+- 本身**不**更改持久化的设置
+- 返回成功/错误，不做回退替换
 
-Settings UI uses this for live preview and restores prior theme on cancel.
+设置 UI 用此功能做实时预览，并在取消时恢复之前的主题。
 
-## Watchers and live reload
+## Watcher 与热重载
 
-When watcher is enabled (`setTheme(..., true)` / interactive init):
+启用 watcher 时（`setTheme(..., true)` / 交互式初始化）：
 
-- watches `<customThemesDir>/<currentTheme>.json` only when that file exists
-- built-ins are effectively not watched; built-in theme lookup also takes precedence over same-name custom files
-- matching file changes schedule a debounced reload; reload errors or temporary file absence keep the last successfully loaded theme
-- the watcher does not perform a delete/rename fallback; it waits for a future successful reload or explicit theme switch
+- 仅当 `<customThemesDir>/<currentTheme>.json` 存在时监视该文件
+- 内置主题实际上不被监视；内置主题查找也优先于同名自定义文件
+- 文件变化会安排一次防抖重载；重载出错或文件暂时缺失时保留最后成功加载的主题
+- watcher 不做删除/重命名回退；它等待未来的成功重载或显式主题切换
 
-Auto mode also reevaluates dark/light slot mapping from terminal appearance changes, `SIGWINCH`, and the macOS fallback observer when active.
+自动模式还会根据终端外观变化、`SIGWINCH` 以及（生效时）macOS 回退观察器重新评估 dark/light 槽位映射。
 
-## Color-blind mode behavior
+## 色盲模式行为
 
-`colorBlindMode` changes only one token at runtime:
+`colorBlindMode` 在运行时只改动一个 token：
 
-- `toolDiffAdded` is HSV-adjusted (green shifted toward blue)
-- adjustment is applied only when resolved value is a hex string
+- `toolDiffAdded` 做 HSV 调整（绿色向蓝色偏移）
+- 仅当解析后的值是 hex 字符串时才应用该调整
 
-Other tokens are unchanged.
+其他 token 不变。
 
-## Where theme settings are persisted
+## 主题设置保存在哪里
 
-Theme-related settings are persisted by `Settings` to global config YAML:
+主题相关设置由 `Settings` 持久化到全局 config YAML：
 
-- path: `<agentDir>/config.yml`
-- default agent dir: `~/.omp/agent`
-- effective default file: `~/.omp/agent/config.yml`
+- 路径：`<agentDir>/config.yml`
+- 默认 agent 目录：`~/.omp/agent`
+- 生效的默认文件：`~/.omp/agent/config.yml`
 
-Persisted keys:
+持久化的键：
 
 - `theme.dark`
 - `theme.light`
 - `symbolPreset`
 - `colorBlindMode`
 
-Legacy migration exists: old flat `theme: "name"` is migrated to nested `theme.dark` or `theme.light` based on luminance detection.
+存在旧版迁移：旧的扁平 `theme: "name"` 会根据亮度检测迁移到嵌套的 `theme.dark` 或 `theme.light`。
 
-## Creating a custom theme (practical)
+## 创建自定义主题（实操）
 
-1. Create file in custom themes dir, e.g. `~/.omp/agent/themes/my-theme.json`.
-2. Include `name`, optional `vars`, and **all required** `colors` tokens.
-3. Optionally include `symbols` and `export`.
-4. Select the theme in Settings (`Appearance -> Dark Theme` or `Appearance -> Light Theme`) depending on which auto slot you want.
+1. 在自定义主题目录中创建文件，例如 `~/.omp/agent/themes/my-theme.json`。
+2. 包含 `name`、可选 `vars` 以及**全部必填**的 `colors` token。
+3. 可选包含 `symbols` 与 `export`。
+4. 在 Settings 中选择主题（`Appearance -> Dark Theme` 或 `Appearance -> Light Theme`），取决于你想使用哪个自动槽位。
 
-Minimal skeleton:
+最小骨架：
 
 ```json
 {
@@ -333,26 +333,26 @@ Minimal skeleton:
 }
 ```
 
-## Testing custom themes
+## 测试自定义主题
 
-Use this workflow:
+使用这个工作流：
 
-1. Start interactive mode (watcher enabled from startup).
-2. Open settings and preview theme values (live `previewTheme`).
-3. For custom theme files, edit the JSON while running and confirm auto-reload on save.
-4. Exercise critical surfaces:
-   - markdown rendering
-   - tool blocks (pending/success/error)
-   - diff rendering (added/removed/context)
-   - status line readability
-   - thinking level border changes
-   - bash/python mode border colors
-5. Validate both symbol presets if your theme depends on glyph width/appearance.
+1. 启动交互模式（watcher 从启动起即启用）。
+2. 打开设置并预览主题值（实时 `previewTheme`）。
+3. 对自定义主题文件，在运行中编辑 JSON，确认保存时自动重载。
+4. 检验关键表面：
+   - markdown 渲染
+   - 工具块（pending/success/error）
+   - diff 渲染（added/removed/context）
+   - 状态行可读性
+   - thinking 级别边框变化
+   - bash/python 模式边框颜色
+5. 若你的主题依赖字形宽度/外观，请验证两种符号预设。
 
-## Real constraints and caveats
+## 实际约束与注意事项
 
-- All `colors` tokens are required for custom themes except optional `thinkingMax`, which falls back to `thinkingXhigh`.
-- `export` and `symbols` are optional.
-- `$schema` in theme JSON is informational; runtime validation is enforced by the ArkType-compatible schema in code (`themeJsonSchema` in `src/modes/theme/schema.ts`).
-- `setTheme` failure falls back to `dark`; `previewTheme` failure does not replace current theme.
-- File watcher reload errors or temporary missing files keep the current loaded theme until a successful reload or explicit theme switch.
+- 自定义主题需要全部 `colors` token，除可选的 `thinkingMax`（回退到 `thinkingXhigh`）。
+- `export` 与 `symbols` 可选。
+- theme JSON 中的 `$schema` 仅供参考；运行时校验由代码中兼容 ArkType 的 schema 强制执行（`src/modes/theme/schema.ts` 中的 `themeJsonSchema`）。
+- `setTheme` 失败回退到 `dark`；`previewTheme` 失败不替换当前主题。
+- 文件 watcher 重载错误或临时文件缺失时保留当前已加载的主题，直到成功重载或显式切换主题。

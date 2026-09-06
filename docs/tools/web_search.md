@@ -1,288 +1,288 @@
 # web_search
 
-> Run one web query through the first available search provider and return LLM-formatted answer, source URLs, and optional citations.
+> 通过第一个可用的搜索 provider 运行一次网络查询，并返回 LLM 格式化的回答、来源 URL 与可选的引用。
 
-## Source
-- Entry: `packages/coding-agent/src/web/search/index.ts`
-- Model-facing prompt: `packages/coding-agent/src/prompts/tools/web-search.md`
-- Key collaborators:
-  - `packages/coding-agent/src/web/search/provider.ts` — lazy provider registry; availability chain.
-  - `packages/coding-agent/src/web/search/types.ts` — unified `SearchResponse` / `SearchProviderError` types.
-  - `packages/coding-agent/src/web/search/render.ts` — TUI renderer details type.
-  - `packages/coding-agent/src/web/search/providers/base.ts` — provider interface and shared params contract.
-  - `packages/coding-agent/src/web/search/providers/utils.ts` — credential lookup; source normalization.
-  - `packages/coding-agent/src/web/search/providers/browser-headers.ts` — shared Chromium navigation headers for scrape providers.
-  - `packages/coding-agent/src/web/search/query.ts` — Google-style query parsing, provider syntax formatting, and lenient result filtering.
-  - `packages/coding-agent/src/web/search/providers/browser-page.ts` — shared fetch/headless-browser page loader for scrape providers.
-  - `packages/coding-agent/src/web/search/providers/anthropic.ts` — Claude web-search provider.
-  - `packages/coding-agent/src/web/search/providers/brave.ts` — Brave Search API adapter.
-  - `packages/coding-agent/src/web/search/providers/codex.ts` — OpenAI Codex SSE adapter.
-  - `packages/coding-agent/src/web/search/providers/duckduckgo.ts` — DuckDuckGo HTML frontend scraper.
-  - `packages/coding-agent/src/web/search/providers/ecosia.ts` — Ecosia browser-backed scraper.
-  - `packages/coding-agent/src/web/search/providers/exa.ts` — Exa API or MCP adapter.
-  - `packages/coding-agent/src/web/search/providers/firecrawl.ts` — Firecrawl search adapter.
-  - `packages/coding-agent/src/web/search/providers/gemini.ts` — Gemini grounding SSE adapter.
-  - `packages/coding-agent/src/web/search/providers/google.ts` — Google browser-backed SERP scraper.
-  - `packages/coding-agent/src/web/search/providers/jina.ts` — Jina Reader search adapter.
-  - `packages/coding-agent/src/web/search/providers/kagi.ts` — Kagi provider wrapper.
-  - `packages/coding-agent/src/web/search/providers/kimi.ts` — Kimi search adapter.
-  - `packages/coding-agent/src/web/search/providers/mojeek.ts` — Mojeek browser-backed scraper (independent index).
-  - `packages/coding-agent/src/web/search/providers/parallel.ts` — Parallel provider wrapper.
-  - `packages/coding-agent/src/web/search/providers/perplexity.ts` — Perplexity API / OAuth adapter.
-  - `packages/coding-agent/src/web/search/providers/public.ts` — Public Web aggregate over all credential-free engines.
-  - `packages/coding-agent/src/web/search/providers/searxng.ts` — self-hosted SearXNG adapter.
-  - `packages/coding-agent/src/web/search/providers/startpage.ts` — Startpage (Google-proxied) form-flow scraper.
-  - `packages/coding-agent/src/web/search/providers/synthetic.ts` — Synthetic search adapter.
-  - `packages/coding-agent/src/web/search/providers/tavily.ts` — Tavily search adapter.
-  - `packages/coding-agent/src/web/search/providers/tinyfish.ts` — TinyFish search adapter.
-  - `packages/coding-agent/src/web/search/providers/xai.ts` — xAI Responses web-search adapter.
-  - `packages/coding-agent/src/web/search/providers/zai.ts` — Z.AI remote MCP adapter.
-  - `packages/coding-agent/src/web/parallel.ts` — Parallel search/extract HTTP client.
-  - `packages/coding-agent/src/web/kagi.ts` — Kagi HTTP client.
-  - `packages/coding-agent/src/tools/index.ts` — built-in tool registration and enable flag.
+## 源码
+- 入口：`packages/coding-agent/src/web/search/index.ts`
+- 面向模型的 prompt：`packages/coding-agent/src/prompts/tools/web-search.md`
+- 关键协作模块：
+  - `packages/coding-agent/src/web/search/provider.ts` — 惰性 provider 注册表；可用性链。
+  - `packages/coding-agent/src/web/search/types.ts` — 统一的 `SearchResponse` / `SearchProviderError` 类型。
+  - `packages/coding-agent/src/web/search/render.ts` — TUI 渲染器 details 类型。
+  - `packages/coding-agent/src/web/search/providers/base.ts` — provider 接口与共享 params 契约。
+  - `packages/coding-agent/src/web/search/providers/utils.ts` — 凭据查找；source 规范化。
+  - `packages/coding-agent/src/web/search/providers/browser-headers.ts` — 供 scrape provider 使用的共享 Chromium 导航请求头。
+  - `packages/coding-agent/src/web/search/query.ts` — Google 风格 query 解析、provider 语法格式化与宽松的结果过滤。
+  - `packages/coding-agent/src/web/search/providers/browser-page.ts` — 供 scrape provider 使用的共享 fetch/无头浏览器页面加载器。
+  - `packages/coding-agent/src/web/search/providers/anthropic.ts` — Claude web-search provider。
+  - `packages/coding-agent/src/web/search/providers/brave.ts` — Brave Search API 适配器。
+  - `packages/coding-agent/src/web/search/providers/codex.ts` — OpenAI Codex SSE 适配器。
+  - `packages/coding-agent/src/web/search/providers/duckduckgo.ts` — DuckDuckGo HTML 前端抓取器。
+  - `packages/coding-agent/src/web/search/providers/ecosia.ts` — Ecosia 浏览器后端抓取器。
+  - `packages/coding-agent/src/web/search/providers/exa.ts` — Exa API 或 MCP 适配器。
+  - `packages/coding-agent/src/web/search/providers/firecrawl.ts` — Firecrawl 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/gemini.ts` — Gemini grounding SSE 适配器。
+  - `packages/coding-agent/src/web/search/providers/google.ts` — Google 浏览器后端 SERP 抓取器。
+  - `packages/coding-agent/src/web/search/providers/jina.ts` — Jina Reader 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/kagi.ts` — Kagi provider 包装器。
+  - `packages/coding-agent/src/web/search/providers/kimi.ts` — Kimi 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/mojeek.ts` — Mojeek 浏览器后端抓取器（独立索引）。
+  - `packages/coding-agent/src/web/search/providers/parallel.ts` — Parallel provider 包装器。
+  - `packages/coding-agent/src/web/search/providers/perplexity.ts` — Perplexity API / OAuth 适配器。
+  - `packages/coding-agent/src/web/search/providers/public.ts` — 聚合所有免凭据引擎的 Public Web。
+  - `packages/coding-agent/src/web/search/providers/searxng.ts` — 自托管 SearXNG 适配器。
+  - `packages/coding-agent/src/web/search/providers/startpage.ts` — Startpage（Google 代理）表单流程抓取器。
+  - `packages/coding-agent/src/web/search/providers/synthetic.ts` — Synthetic 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/tavily.ts` — Tavily 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/tinyfish.ts` — TinyFish 搜索适配器。
+  - `packages/coding-agent/src/web/search/providers/xai.ts` — xAI Responses web-search 适配器。
+  - `packages/coding-agent/src/web/search/providers/zai.ts` — Z.AI 远程 MCP 适配器。
+  - `packages/coding-agent/src/web/parallel.ts` — Parallel search/extract HTTP 客户端。
+  - `packages/coding-agent/src/web/kagi.ts` — Kagi HTTP 客户端。
+  - `packages/coding-agent/src/tools/index.ts` — built-in 工具注册与启用标志。
 
-## Inputs
+## 输入
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必填 | 描述 |
 | --- | --- | --- | --- |
-| `query` | `string` | Yes | Raw query. The orchestrator parses Google-style directives (`site:`/`-site:`, `after:`/`before:`, `inurl:`, `intitle:`, `filetype:`, quoted phrases, exclusions, and `OR`) so providers can map them to native filters or supported syntax; the original string remains available to adapters. |
-| `recency` | `"day" \| "week" \| "month" \| "year"` | No | Relative time filter. Implemented by Brave, Perplexity, Tavily, SearXNG, Kagi, TinyFish, Firecrawl, DuckDuckGo, Startpage, Google, and Mojeek; other adapters ignore it. |
-| `limit` | `number` | No | Max results to return. Usually becomes the provider request's result-count parameter when `num_search_results` is absent. TinyFish uses it for paginated fetches before slicing. xAI uses the collapsed value only as a local cap on parsed sources/citations, defaulting to `10` and max `30`. |
-| `max_tokens` | `number` | No | Passed through as provider token caps (`maxOutputTokens`, `max_tokens`, or xAI `max_output_tokens`) only by Anthropic, Gemini, xAI, and Perplexity API-key mode. Ignored by the other providers. |
-| `temperature` | `number` | No | Passed through only by Anthropic models that support sampling parameters, Gemini, xAI, and Perplexity API-key mode. Ignored or omitted by the other provider/model paths. |
-| `num_search_results` | `number` | No | Requested search breadth or local result cap. Most providers send it upstream. TinyFish clamps to `1..20` with default `10`, sends it as `num_results` per page, and paginates before slicing. xAI uses it before `limit` as a local parsed-result cap, defaulting to `10` and max `30`; the current Responses `web_search` tool has no upstream result-count field. |
+| `query` | `string` | 是 | 原始 query。orchestrator 解析 Google 风格指令（`site:`/`-site:`、`after:`/`before:`、`inurl:`、`intitle:`、`filetype:`、带引号短语、排除项与 `OR`），以便 provider 将其映射为原生过滤器或受支持的语法；原始字符串仍保留给适配器使用。 |
+| `recency` | `"day" \| "week" \| "month" \| "year"` | 否 | 相对时间过滤器。由 Brave、Perplexity、Tavily、SearXNG、Kagi、TinyFish、Firecrawl、DuckDuckGo、Startpage、Google 与 Mojeek 实现；其他适配器忽略它。 |
+| `limit` | `number` | 否 | 要返回的最大结果数。缺少 `num_search_results` 时，通常会变成 provider 请求的 result-count 参数。TinyFish 在切片前用其进行分页抓取。xAI 只把折叠后的值用作解析出的 sources/citations 的本地上限，默认 `10`、最大 `30`。 |
+| `max_tokens` | `number` | 否 | 仅由 Anthropic、Gemini、xAI 与 Perplexity API-key 模式作为 provider token 上限透传（`maxOutputTokens`、`max_tokens` 或 xAI 的 `max_output_tokens`）。其他 provider 忽略。 |
+| `temperature` | `number` | 否 | 仅由支持采样参数的 Anthropic 模型、Gemini、xAI 与 Perplexity API-key 模式透传。其他 provider/模型路径忽略或省略。 |
+| `num_search_results` | `number` | 否 | 请求的搜索广度或本地结果上限。大多数 provider 将其上送。TinyFish 钳制到 `1..20`、默认 `10`，以每页 `num_results` 发送，并在切片前分页。xAI 在 `limit` 之前将其用作本地解析结果上限，默认 `10`、最大 `30`；当前 Responses `web_search` 工具没有上游 result-count 字段。 |
 
-## Outputs
-The tool returns a single text content block plus structured `details`.
+## 输出
+该工具返回单个文本 content 块，外加结构化 `details`。
 
 - `content`: `[{ type: "text", text: string }]`
-- `details`: `SearchRenderDetails` from `packages/coding-agent/src/web/search/render.ts`
+- `details`: `SearchRenderDetails`（来自 `packages/coding-agent/src/web/search/render.ts`）
   - `response: SearchResponse`
   - `error?: string`
 
-`text` is produced by `formatForLLM()` in `packages/coding-agent/src/web/search/index.ts`. Notes about relaxed query constraints are emitted first:
+`text` 由 `packages/coding-agent/src/web/search/index.ts` 中的 `formatForLLM()` 生成。关于放宽的 query 约束的说明最先发出：
 
-- If `response.answer` exists, it is emitted first.
-- If sources exist, one entry per source follows (the `## Sources` header with a source count is emitted only when an answer was also produced):
+- 若存在 `response.answer`，则最先发出。
+- 若存在 sources，则每个 source 后跟一条条目（仅当同时产出了 answer 时，才发出带 source 数量的 `## Sources` 标题）：
   - `[n] <title> (<formatted age or published date>)`
   - `    <url>`
-  - optional snippet line truncated to 240 chars.
-- If citations exist, a `## Citations` section follows with URL/title plus optional cited text truncated to 240 chars.
-- If related questions exist, a `## Related` bullet list follows.
-- If search queries exist, a `Search queries: <n>` section follows, capped to the first 3 queries and 120 chars each.
+  - 可选的 snippet 行，截断至 240 字符。
+- 若存在 citations，则其后为 `## Citations` 小节，含 URL/title 以及截断至 240 字符的可选引用文本。
+- 若存在相关问题，则其后为 `## Related` 无序列表小节。
+- 若存在搜索 queries，则其后为 `Search queries: <n>` 小节，限制为前 3 个 query，每个 120 字符。
 
-Failure output is not thrown at the tool boundary when providers are unavailable or provider attempts fail. Instead the tool returns:
+当 provider 不可用或 provider 尝试失败时，失败输出不会在工具边界抛出。工具改为返回：
 
 - `content[0].text = "Error: ..."`
 - `details.response.provider = <last attempted provider> | "none"`
 - `details.error = ...`
 
-Streaming: none. `WebSearchTool.execute()` forwards its `AbortSignal` into `executeSearch()`, and `executeSearch()` passes it to providers. If the signal is aborted during fallback handling, `throwIfAborted(signal)` rethrows the cancellation instead of returning an `"Error: ..."` text result.
+流式：无。`WebSearchTool.execute()` 把其 `AbortSignal` 转发给 `executeSearch()`，`executeSearch()` 再传给 providers。若在 fallback 处理期间 signal 被中止，`throwIfAborted(signal)` 会重新抛出该取消，而不是返回 `"Error: ..."` 文本结果。
 
-Each provider search transport receives a hard timeout from `providers.webSearchTimeoutSeconds` (default `60`, maximum `300`). When that transport exceeds the ceiling, the automatic chain records the provider failure and advances to the next candidate. The setting is not a whole-chain deadline, and providers may impose shorter upstream, retry, or aggregate limits. Set a positive number of seconds, for example `omp config set providers.webSearchTimeoutSeconds 180` for slower model-backed search.
+每个 provider 的搜索传输都从 `providers.webSearchTimeoutSeconds` 获得一个硬超时（默认 `60`，最大 `300`）。当该传输超过上限时，自动链会记录该 provider 失败并前进到下一个候选。该设置不是整条链的截止时间，且 provider 可能施加更短的上游、重试或聚合限制。请设置正数秒，例如对较慢的模型后端搜索用 `omp config set providers.webSearchTimeoutSeconds 180`。
 
-## Flow
-1. `WebSearchTool.execute()` in `packages/coding-agent/src/web/search/index.ts` delegates directly to `executeSearch()`.
-2. `executeSearch()` parses `query` once with `parseSearchQuery()`, then computes ordered provider candidates without eagerly loading their modules:
-   - if internal `params.provider` is set and not `"auto"`, that provider is the only candidate and is treated as explicit;
-   - otherwise it uses the configured candidate order. Entries explicitly listed in `providers.webSearchOrder` use `isExplicitlyAvailable()`; ordinary fallback entries use `isAvailable()`.
-3. `resolveProviderCandidates()` prioritizes valid first-occurrence IDs from `providers.webSearchOrder`, then appends unlisted providers in `SEARCH_PROVIDER_ORDER`. An empty list preserves built-in order. `providers.webSearchExclude` removes providers from the automatic/configured chain and from Public Web fan-out. Internal per-request forced providers bypass that configured chain.
-4. If no candidate is available (for example, settings exclude every credential-free engine and no keyed/OAuth provider is configured), `executeSearch()` returns `Error: No web search provider configured.` with `details.response.provider = "none"`.
-5. For each provider in order, `executeSearch()` calls `provider.search()` with:
-   - `query`,
-   - `limit`, `recency`, `temperature`, `maxOutputTokens`, `numSearchResults`,
-   - `timeoutMs`, derived from `providers.webSearchTimeoutSeconds`,
-   - `systemPrompt` from `packages/coding-agent/src/prompts/system/web-search.md`,
-   - the parsed structured query, including recognized directives and date/domain/title/URL/filetype constraints.
-6. After a provider responds, `applyQueryConstraints()` leniently post-filters its sources for constraints not guaranteed upstream. It applies each filterable dimension in turn; any dimension that would eliminate every remaining result is relaxed and a leading `Note: no results matched ...` is emitted. Answer/citation text is not rewritten.
-7. A `SearchResponse` with no renderable content (`hasRenderableSearchContent()` returns false) is rejected as a `SearchProviderError` (status `204`) so the loop advances to the next provider. On the first renderable response, `formatForLLM()` renders notes, answer, sources, citations, related questions, and search queries into one text block.
-8. If a provider throws, `executeSearch()` records the error and tries the next provider. There is no provider-level parallel fan-out; fallback is sequential.
-9. After all candidates fail, `formatSearchProviderFailure()` normalizes each error:
-   - Anthropic `404` becomes `Anthropic web search returned 404 (model or endpoint not found).`
-   - `401`/`403` become `<Provider> authorization failed ...` except Z.AI, which preserves its raw message.
-   - other `SearchProviderError`s surface `error.message`.
-10. If more than one provider failed, the final message is `All web search providers failed: <provider/error>; ...`; otherwise it is just the normalized last error.
+## 流程
+1. `packages/coding-agent/src/web/search/index.ts` 中的 `WebSearchTool.execute()` 直接委托给 `executeSearch()`。
+2. `executeSearch()` 用 `parseSearchQuery()` 解析一次 `query`，然后计算有序的 provider 候选而不急切加载其模块：
+   - 若内部 `params.provider` 已设置且不是 `"auto"`，则该 provider 是唯一候选并被当作显式指定；
+   - 否则使用配置的候选顺序。在 `providers.webSearchOrder` 中显式列出的条目使用 `isExplicitlyAvailable()`；普通 fallback 条目使用 `isAvailable()`。
+3. `resolveProviderCandidates()` 优先处理 `providers.webSearchOrder` 中有效的首次出现 ID，然后按 `SEARCH_PROVIDER_ORDER` 追加未列出的 provider。空列表保留 built-in 顺序。`providers.webSearchExclude` 会把 provider 从自动/配置链以及 Public Web fan-out 中移除。内部按请求强制的 provider 绕过该配置链。
+4. 若没有可用候选（例如设置排除了所有免凭据引擎，且未配置带 key/OAuth 的 provider），`executeSearch()` 返回 `Error: No web search provider configured.`，`details.response.provider = "none"`。
+5. 按顺序对每个 provider，`executeSearch()` 调用 `provider.search()`，参数为：
+   - `query`，
+   - `limit`、`recency`、`temperature`、`maxOutputTokens`、`numSearchResults`，
+   - 由 `providers.webSearchTimeoutSeconds` 派生的 `timeoutMs`，
+   - 来自 `packages/coding-agent/src/prompts/system/web-search.md` 的 `systemPrompt`，
+   - 解析后的结构化 query，包括可识别的指令以及 date/domain/title/URL/filetype 约束。
+6. provider 响应后，`applyQueryConstraints()` 对其 sources 宽松地后置过滤上游不保证的约束。它依次应用每个可过滤维度；任何会消除全部剩余结果的维度都会被放宽，并发出前导 `Note: no results matched ...`。answer/citation 文本不会被改写。
+7. 不含可渲染内容的 `SearchResponse`（`hasRenderableSearchContent()` 返回 false）会被当作 `SearchProviderError`（状态 `204`）拒绝，使循环前进到下一个 provider。在第一个可渲染响应上，`formatForLLM()` 把 notes、answer、sources、citations、相关问题与搜索 queries 渲染进一个文本块。
+8. 若 provider 抛错，`executeSearch()` 记录错误并尝试下一个 provider。没有 provider 级并行 fan-out；fallback 是顺序的。
+9. 所有候选都失败后，`formatSearchProviderFailure()` 规范化每个错误：
+   - Anthropic `404` 变成 `Anthropic web search returned 404 (model or endpoint not found).`
+   - `401`/`403` 变成 `<Provider> authorization failed ...`，Z.AI 除外，它保留原始消息。
+   - 其他 `SearchProviderError` 暴露 `error.message`。
+10. 若超过一个 provider 失败，最终消息是 `All web search providers failed: <provider/error>; ...`；否则只是规范化后的最后一个错误。
 
-## Modes / Variants
-- **Provider selection**
-  - **Forced provider**: internal callers may pass `provider`; a non-`auto` value is the only attempted provider and uses `isExplicitlyAvailable()`, while `auto` (or omitting it) walks the configured chain. This field is not in the model-facing schema.
-  - **Configured order**: `setSearchProviderOrder()` prioritizes valid, first-occurrence provider IDs in `providers.webSearchOrder`; omitted providers follow in built-in relative order. Listed providers are explicit selections and resolve through `isExplicitlyAvailable()`, so Perplexity, Exa, and Firecrawl can use their unauthenticated/keyless paths.
-  - **Excluded providers**: `setExcludedSearchProviders()` removes providers from the automatic/configured chain and Public Web fan-out. Wired from `providers.webSearchExclude` through `packages/coding-agent/src/config/provider-globals.ts`.
-  - **Default auto chain order** (23 providers): `perplexity`, `gemini`, `anthropic`, `codex`, `xai`, `zai`, `exa`, `tinyfish`, `jina`, `kagi`, `tavily`, `firecrawl`, `brave`, `kimi`, `parallel`, `synthetic`, `searxng`, `startpage`, `duckduckgo`, `ecosia`, `google`, `mojeek`, `public` (`SEARCH_PROVIDER_ORDER` in `packages/coding-agent/src/web/search/types.ts`). `public` is explicit-only: its `isAvailable()` returns `false`, so the auto chain never fans out implicitly.
-- **Provider timeout**: `providers.webSearchTimeoutSeconds` supplies the hard ceiling for each provider's search transport before the automatic chain advances. It defaults to `60`; invalid non-positive values fall back to that default and values above `300` are capped, while provider-specific upstream or aggregate limits may still be shorter.
-- **Provider adapters**
+## 模式 / 变体
+- **Provider 选择**
+  - **强制指定 provider**：内部调用方可传 `provider`；非 `auto` 值是唯一尝试的 provider 并使用 `isExplicitlyAvailable()`，而 `auto`（或省略）走配置链。该字段不在面向模型的 schema 中。
+  - **配置顺序**：`setSearchProviderOrder()` 优先处理 `providers.webSearchOrder` 中有效的、首次出现的 provider ID；未列出的 provider 按 built-in 相对顺序跟随。列出的 provider 是显式选择，通过 `isExplicitlyAvailable()` 解析，因此 Perplexity、Exa 与 Firecrawl 可以使用其未认证/无密钥路径。
+  - **排除的 provider**：`setExcludedSearchProviders()` 把 provider 从自动/配置链与 Public Web fan-out 中移除。通过 `packages/coding-agent/src/config/provider-globals.ts` 从 `providers.webSearchExclude` 接入。
+  - **默认自动链顺序**（23 个 provider）：`perplexity`、`gemini`、`anthropic`、`codex`、`xai`、`zai`、`exa`、`tinyfish`、`jina`、`kagi`、`tavily`、`firecrawl`、`brave`、`kimi`、`parallel`、`synthetic`、`searxng`、`startpage`、`duckduckgo`、`ecosia`、`google`、`mojeek`、`public`（`packages/coding-agent/src/web/search/types.ts` 中的 `SEARCH_PROVIDER_ORDER`）。`public` 仅限显式选择：其 `isAvailable()` 返回 `false`，因此自动链从不隐式 fan-out。
+- **Provider 超时**：`providers.webSearchTimeoutSeconds` 为每个 provider 的搜索传输提供硬上限，之后自动链前进。默认 `60`；无效的非正值回退到该默认值，超过 `300` 的值被钳制，而 provider 特定的上游或聚合限制仍可能更短。
+- **Provider 适配器**
   - **Perplexity** — `packages/coding-agent/src/web/search/providers/perplexity.ts`
-    - Availability: auth attempt order is `PERPLEXITY_COOKIES` -> OAuth token in `agent.db` -> direct Perplexity API key -> OpenRouter key -> anonymous ask-endpoint fallback. The automatic chain requires direct Perplexity auth (cookies, OAuth, or a Perplexity credential); explicit selection is always available and can use OpenRouter or anonymous search.
-    - OAuth/cookie/anonymous mode: POSTs to `https://www.perplexity.ai/rest/sse/perplexity_ask`, consumes SSE, merges partial events, extracts answer and source URLs, sets `authMode: "oauth"` (`"anonymous"` for the unauthenticated fallback).
-    - API-key mode: POSTs to `https://api.perplexity.ai/chat/completions` with `model: "sonar-pro"`, `search_mode: "web"`, `num_search_results`, optional `search_recency_filter`, `max_tokens`, `temperature`.
-    - `num_search_results` controls upstream API breadth only in API-key mode. `limit` is preserved separately as `num_results` and slices returned `sources` after parsing in both auth modes.
-    - Output may include `answer`, `sources`, `citations`, `usage`, `model`, `requestId`, `authMode`.
+    - 可用性：认证尝试顺序为 `PERPLEXITY_COOKIES` -> `agent.db` 中的 OAuth token -> 直接 Perplexity API key -> OpenRouter key -> 匿名 ask-endpoint 回退。自动链要求直接 Perplexity 认证（cookies、OAuth 或 Perplexity 凭据）；显式选择始终可用，并可使用 OpenRouter 或匿名搜索。
+    - OAuth/cookie/匿名模式：POST 到 `https://www.perplexity.ai/rest/sse/perplexity_ask`，消费 SSE，合并部分事件，提取 answer 与 source URL，设置 `authMode: "oauth"`（未认证回退为 `"anonymous"`）。
+    - API-key 模式：POST 到 `https://api.perplexity.ai/chat/completions`，带 `model: "sonar-pro"`、`search_mode: "web"`、`num_search_results`、可选的 `search_recency_filter`、`max_tokens`、`temperature`。
+    - `num_search_results` 只在 API-key 模式下控制上游 API 广度。`limit` 作为 `num_results` 单独保留，并在两种认证模式解析后切片返回的 `sources`。
+    - 输出可能包含 `answer`、`sources`、`citations`、`usage`、`model`、`requestId`、`authMode`。
   - **Gemini** — `packages/coding-agent/src/web/search/providers/gemini.ts`
-    - Availability: OAuth credentials in `agent.db` for `google-gemini-cli` / `google-antigravity`, or a Google Developer API key.
-    - Querying: SSE `streamGenerateContent` call with Google Search grounding enabled. Antigravity auth tries two fallback endpoints and retries `401/403/400 invalid auth` once after token refresh; `429/5xx` retry with exponential backoff and server-provided retry delay, capped by a `5 * 60 * 1000` ms rate-limit budget.
-    - Model: `providers.webSearchGeminiModel` selects the Gemini grounding model; `GEMINI_SEARCH_MODEL` overrides it. Defaults to `gemini-2.5-flash`.
-    - `max_tokens` and `temperature` pass through as `generationConfig.maxOutputTokens` / `generationConfig.temperature`.
-    - `limit` and `num_search_results` are collapsed together before dispatch.
-    - Output may include `answer`, `sources`, `citations`, `searchQueries`, `usage`, `model`.
+    - 可用性：`agent.db` 中 `google-gemini-cli` / `google-antigravity` 的 OAuth 凭据，或 Google Developer API key。
+    - 查询：启用 Google Search grounding 的 SSE `streamGenerateContent` 调用。Antigravity 认证尝试两个回退端点，并在 token 刷新后对 `401/403/400 invalid auth` 重试一次；`429/5xx` 以指数退避与服务端提供的重试延迟重试，上限为 `5 * 60 * 1000` ms 的限流预算。
+    - 模型：`providers.webSearchGeminiModel` 选择 Gemini grounding 模型；`GEMINI_SEARCH_MODEL` 覆盖它。默认为 `gemini-2.5-flash`。
+    - `max_tokens` 与 `temperature` 作为 `generationConfig.maxOutputTokens` / `generationConfig.temperature` 透传。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起。
+    - 输出可能包含 `answer`、`sources`、`citations`、`searchQueries`、`usage`、`model`。
   - **Anthropic** — `packages/coding-agent/src/web/search/providers/anthropic.ts`
-    - Availability: `ANTHROPIC_SEARCH_API_KEY` env var, otherwise `authStorage.hasAuth("anthropic")`; search credentials come from `authStorage.getApiKey("anthropic")` when no search-specific key is set.
-    - Env overrides specific to search (do not affect chat completions):
-      - `ANTHROPIC_SEARCH_API_KEY` — highest-priority search auth; overrides `ANTHROPIC_API_KEY` / OAuth / `ANTHROPIC_FOUNDRY_API_KEY` for the search call only.
-      - `ANTHROPIC_SEARCH_BASE_URL` — search-only base URL for either `ANTHROPIC_SEARCH_API_KEY` or fallback Anthropic credentials; overrides `ANTHROPIC_BASE_URL` (and `FOUNDRY_BASE_URL` in Foundry mode); defaults to `https://api.anthropic.com`.
-      - `ANTHROPIC_SEARCH_MODEL` — search model; defaults to `claude-haiku-4-5`.
-    - Querying: Claude Messages API with web-search tool enabled.
-    - `max_tokens` passes through. `temperature` passes through only for models that support sampling parameters; it is omitted for Opus 4.7+, Sonnet 5+, and Fable/Mythos 5+ because those APIs reject sampling parameters.
-    - `limit` and `num_search_results` are collapsed together before dispatch: `num_results = params.numSearchResults ?? params.limit`.
-    - Output may include `answer`, `sources`, `citations`, `searchQueries`, `usage.searchRequests`, `model`, `requestId`.
+    - 可用性：`ANTHROPIC_SEARCH_API_KEY` 环境变量，否则 `authStorage.hasAuth("anthropic")`；未设置搜索专用 key 时，搜索凭据来自 `authStorage.getApiKey("anthropic")`。
+    - 搜索专属的环境覆盖（不影响 chat completions）：
+      - `ANTHROPIC_SEARCH_API_KEY` — 最高优先级的搜索认证；仅对该搜索调用覆盖 `ANTHROPIC_API_KEY` / OAuth / `ANTHROPIC_FOUNDRY_API_KEY`。
+      - `ANTHROPIC_SEARCH_BASE_URL` — 仅搜索的 base URL，适用于 `ANTHROPIC_SEARCH_API_KEY` 或回退的 Anthropic 凭据；覆盖 `ANTHROPIC_BASE_URL`（Foundry 模式下还有 `FOUNDRY_BASE_URL`）；默认为 `https://api.anthropic.com`。
+      - `ANTHROPIC_SEARCH_MODEL` — 搜索模型；默认为 `claude-haiku-4-5`。
+    - 查询：启用 web-search 工具的 Claude Messages API。
+    - `max_tokens` 透传。`temperature` 仅对支持采样参数的模型透传；对 Opus 4.7+、Sonnet 5+ 与 Fable/Mythos 5+ 省略，因为这些 API 拒绝采样参数。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起：`num_results = params.numSearchResults ?? params.limit`。
+    - 输出可能包含 `answer`、`sources`、`citations`、`searchQueries`、`usage.searchRequests`、`model`、`requestId`。
   - **Codex** — `packages/coding-agent/src/web/search/providers/codex.ts`
-    - Availability: OAuth credential for `openai-codex` in `agent.db`; refresh is lazy during search. Custom model-registry endpoints may instead use a configured API-key/command credential, but official OAuth/env credentials are refused for custom endpoints.
-    - Querying: streams the Codex Responses endpoint with hosted `web_search` and `search_context_size: "high"`. Google-style directives are re-emitted in the query.
-    - `PI_CODEX_WEB_SEARCH_MODEL` forces one model attempt. Otherwise the adapter tries bundled ChatGPT-account-safe models in preference order (`gpt-5.6-luna`, `terra`, `sol`, `gpt-5.5`, …), advancing only for supported model-retry failures. Responses-Lite models use automatic tool choice; a completion without a `web_search_call` is rejected rather than presented as searched content.
-    - Ignores `recency`, `max_tokens`, and `temperature`. `num_search_results ?? limit` slices parsed sources locally.
-    - Output may include `answer`, `sources`, `usage`, `model`, `requestId`. If the stream has no `url_citation` annotations, the adapter falls back to markdown links and bare URLs from the answer.
+    - 可用性：`agent.db` 中 `openai-codex` 的 OAuth 凭据；refresh 在搜索期间惰性进行。自定义模型注册表端点可改用配置的 API-key/command 凭据，但官方 OAuth/env 凭据会被自定义端点拒绝。
+    - 查询：流式 Codex Responses 端点，带托管的 `web_search` 与 `search_context_size: "high"`。Google 风格指令会在 query 中重新发出。
+    - `PI_CODEX_WEB_SEARCH_MODEL` 强制尝试单个模型。否则适配器按偏好顺序尝试 bundle 的 ChatGPT-account-safe 模型（`gpt-5.6-luna`、`terra`、`sol`、`gpt-5.5`、……），仅对受支持的模型重试失败前进。Responses-Lite 模型使用自动工具选择；没有 `web_search_call` 的 completion 会被拒绝，而不是呈现为已搜索内容。
+    - 忽略 `recency`、`max_tokens` 与 `temperature`。`num_search_results ?? limit` 在本地切片解析出的 sources。
+    - 输出可能包含 `answer`、`sources`、`usage`、`model`、`requestId`。若流中没有 `url_citation` 注解，适配器回退到 answer 中的 markdown 链接与裸 URL。
   - **xAI** — `packages/coding-agent/src/web/search/providers/xai.ts`
-    - Availability: `shouldPreferXAIOAuth()` prefers the `xai-oauth` credential — true when `XAI_OAUTH_TOKEN` is set or a stored `xai-oauth` credential exists whose origin would not be shadowed by a shared `XAI_API_KEY` env key — otherwise `authStorage.hasAuth("xai")` (`XAI_API_KEY` env or `agent.db` credential for `xai`).
-    - Querying: POSTs the Responses API with model `grok-4.5`, `tools: [{ type: "web_search", ... }]`, and reasoning effort `low`. A custom model-registry endpoint is supported, but official xAI OAuth credentials are refused for custom endpoints.
-    - Up to five `site:` or `-site:` hosts map to mutually exclusive `allowed_domains` / `excluded_domains` filters (allow-list wins); path restrictions remain for central filtering. Absolute dates stay as query hints because the current Responses `web_search` tool has no date fields.
-    - The request carries no `search_parameters` (the deprecated Live Search field now returns 410), so `recency` is ignored beyond natural-language date hints in the query text.
-    - `max_tokens` and `temperature` pass through. `num_search_results` (or `limit`) only caps parsed sources/citations locally via `clampNumResults(...)`, default `10`, max `30`; it is not sent as an upstream search-count parameter.
-    - Output may include `answer`, `sources`, `citations`, `usage`, `model`, `requestId`, `authMode: "api_key"`.
+    - 可用性：`shouldPreferXAIOAuth()` 优先 `xai-oauth` 凭据 —— 当设置了 `XAI_OAUTH_TOKEN` 或存在存储的 `xai-oauth` 凭据、且其来源不会被共享的 `XAI_API_KEY` env key 遮蔽时为 true —— 否则 `authStorage.hasAuth("xai")`（`XAI_API_KEY` env 或 `agent.db` 中 `xai` 的凭据）。
+    - 查询：POST Responses API，模型 `grok-4.5`、`tools: [{ type: "web_search", ... }]`、reasoning effort `low`。支持自定义模型注册表端点，但官方 xAI OAuth 凭据会被自定义端点拒绝。
+    - 最多五个 `site:` 或 `-site:` 主机映射为互斥的 `allowed_domains` / `excluded_domains` 过滤器（allow-list 优先）；路径限制保留给中央过滤。绝对日期作为 query 提示保留，因为当前 Responses `web_search` 工具没有日期字段。
+    - 请求不带 `search_parameters`（已废弃的 Live Search 字段现在返回 410），因此 `recency` 在 query 文本中的自然语言日期提示之外被忽略。
+    - `max_tokens` 与 `temperature` 透传。`num_search_results`（或 `limit`）只通过 `clampNumResults(...)` 在本地限制解析出的 sources/citations，默认 `10`、最大 `30`；不作为上游搜索数量参数发送。
+    - 输出可能包含 `answer`、`sources`、`citations`、`usage`、`model`、`requestId`、`authMode: "api_key"`。
   - **Z.AI** — `packages/coding-agent/src/web/search/providers/zai.ts`
-    - Availability: env or `agent.db` credential for `zai`.
-    - Querying: JSON-RPC `tools/call` against `https://api.z.ai/api/mcp/web_search_prime/mcp` for remote MCP tool `web_search_prime`.
-    - Fallback chain inside the provider: tries `{query,count}`, then `{search_query,count}`, then `{search_query, search_engine:"search-prime", count}` when earlier attempts fail with argument-shape errors.
-    - `limit` and `num_search_results` are collapsed together before dispatch.
-    - Output may include parsed free-text `answer`, `sources`, `requestId`.
+    - 可用性：`zai` 的 env 或 `agent.db` 凭据。
+    - 查询：针对 `https://api.z.ai/api/mcp/web_search_prime/mcp` 的 JSON-RPC `tools/call`，用于远程 MCP 工具 `web_search_prime`。
+    - provider 内部回退链：先尝试 `{query,count}`，再 `{search_query,count}`，若前几次尝试因参数形状错误失败，最后 `{search_query, search_engine:"search-prime", count}`。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起。
+    - 输出可能包含解析出的自由文本 `answer`、`sources`、`requestId`。
   - **Exa** — `packages/coding-agent/src/web/search/providers/exa.ts`
-    - Availability: `EXA_API_KEY` or a stored credential for `exa` (including one added through `/login exa`) admits Exa to the auto chain; settings must not explicitly disable `exa.enabled` or `exa.enableSearch`. Explicit selection (listing `exa` in `providers.webSearchOrder`, or a forced `provider: exa`) reaches Exa even without a credential and falls back to public MCP.
-    - Querying: POST `https://api.exa.ai/search` with the resolved Exa API key, otherwise JSON-RPC `tools/call` against `https://mcp.exa.ai/mcp` for remote MCP tool `web_search_exa`.
-    - `limit` and `num_search_results` are collapsed together before dispatch.
-    - Output: synthesized `answer` from up to 3 result summaries, `sources`, `requestId`.
+    - 可用性：`EXA_API_KEY` 或 `exa` 的存储凭据（包括通过 `/login exa` 添加的）允许 Exa 进入自动链；设置不得显式禁用 `exa.enabled` 或 `exa.enableSearch`。显式选择（在 `providers.webSearchOrder` 中列出 `exa`，或强制 `provider: exa`）即使没有凭据也能到达 Exa，并回退到公共 MCP。
+    - 查询：用解析出的 Exa API key POST `https://api.exa.ai/search`，否则对 `https://mcp.exa.ai/mcp` 的远程 MCP 工具 `web_search_exa` 使用 JSON-RPC `tools/call`。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起。
+    - 输出：从最多 3 条结果摘要综合出的 `answer`、`sources`、`requestId`。
   - **TinyFish** — `packages/coding-agent/src/web/search/providers/tinyfish.ts`
-    - Availability: `TINYFISH_API_KEY` or `agent.db` credential for `tinyfish`.
-    - Querying: GET `https://api.search.tinyfish.ai` with `X-API-Key` and `query`; `recency` maps to `recency_minutes`.
-    - `limit` / `num_search_results`: collapsed as `params.numSearchResults ?? params.limit`, clamped to `1..20`, default `10`. TinyFish has no count parameter and returns at most 10 results per page; for counts above the first page, the adapter fetches documented `page` values (`0`, then `1` when needed) before slicing locally. Output `sources`, `authMode: "api_key"`.
+    - 可用性：`TINYFISH_API_KEY` 或 `agent.db` 中 `tinyfish` 的凭据。
+    - 查询：GET `https://api.search.tinyfish.ai`，带 `X-API-Key` 与 `query`；`recency` 映射为 `recency_minutes`。
+    - `limit` / `num_search_results`：折叠为 `params.numSearchResults ?? params.limit`，钳制到 `1..20`、默认 `10`。TinyFish 没有 count 参数，每页最多返回 10 条结果；当数量超过第一页时，适配器在本地切片前抓取文档化的 `page` 值（`0`，需要时再 `1`）。输出 `sources`、`authMode: "api_key"`。
   - **Jina** — `packages/coding-agent/src/web/search/providers/jina.ts`
-    - Availability: `JINA_API_KEY` only.
-    - Querying: GET-like fetch to `https://s.jina.ai/<encoded query>` with bearer auth.
-    - Ignores `recency`, `max_tokens`, and `temperature`.
-    - `limit` / `num_search_results`: adapter slices sources to `params.numSearchResults ?? params.limit` when provided; otherwise returns all payload items.
-    - Output: `sources` only.
-  - **Kagi** — `packages/coding-agent/src/web/search/providers/kagi.ts`, `packages/coding-agent/src/web/kagi.ts`
-    - Availability: env or `agent.db` credential for `kagi`.
-    - Querying: POST `https://kagi.com/api/v1/search` with `Authorization: Bearer <key>` and JSON body `{ query, workflow: "search", limit, filters?: { after } }`. `recency` maps to `filters.after` as a UTC `YYYY-MM-DD` string (`day`/`week`/`month`/`year`).
-    - `limit` and `num_search_results` are collapsed together before dispatch, clamped to `1..40`, default `10`.
-    - Output: `sources` (concatenated `data.search` + `data.video` + `data.news` + `data.infobox`, with video/news/infobox results tagged in the title), `relatedQuestions` (`data.adjacent_question` + `data.related_search` `props.question`), `answer` (`data.direct_answer[0].snippet ?? title`), `requestId` (`meta.trace`).
+    - 可用性：仅 `JINA_API_KEY`。
+    - 查询：对 `https://s.jina.ai/<encoded query>` 的 GET 式 fetch，带 bearer 认证。
+    - 忽略 `recency`、`max_tokens` 与 `temperature`。
+    - `limit` / `num_search_results`：提供时适配器把 sources 切片到 `params.numSearchResults ?? params.limit`；否则返回全部 payload 条目。
+    - 输出：仅 `sources`。
+  - **Kagi** — `packages/coding-agent/src/web/search/providers/kagi.ts`、`packages/coding-agent/src/web/kagi.ts`
+    - 可用性：`kagi` 的 env 或 `agent.db` 凭据。
+    - 查询：POST `https://kagi.com/api/v1/search`，带 `Authorization: Bearer <key>` 与 JSON body `{ query, workflow: "search", limit, filters?: { after } }`。`recency` 作为 UTC `YYYY-MM-DD` 字符串映射到 `filters.after`（`day`/`week`/`month`/`year`）。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起，钳制到 `1..40`、默认 `10`。
+    - 输出：`sources`（拼接 `data.search` + `data.video` + `data.news` + `data.infobox`，video/news/infobox 结果在标题中打标）、`relatedQuestions`（`data.adjacent_question` + `data.related_search` 的 `props.question`）、`answer`（`data.direct_answer[0].snippet ?? title`）、`requestId`（`meta.trace`）。
   - **Tavily** — `packages/coding-agent/src/web/search/providers/tavily.ts`
-    - Availability: API key from env or `agent.db` via `findCredential()`.
-    - Querying: POST `https://api.tavily.com/search`.
-    - `recency` maps to Tavily `time_range`; code explicitly keeps `topic` at default general scope instead of narrowing to news.
-    - `limit` / `num_search_results`: adapter uses `params.numSearchResults ?? params.limit`, clamped to `5..20` with default `5`.
-    - Output: `answer`, `sources`, `requestId`, `authMode: "api_key"`.
+    - 可用性：来自 env 或 `agent.db`、经 `findCredential()` 的 API key。
+    - 查询：POST `https://api.tavily.com/search`。
+    - `recency` 映射为 Tavily `time_range`；代码显式把 `topic` 保持在默认的 general 范围，而不收窄到 news。
+    - `limit` / `num_search_results`：适配器使用 `params.numSearchResults ?? params.limit`，钳制到 `5..20`、默认 `5`。
+    - 输出：`answer`、`sources`、`requestId`、`authMode: "api_key"`。
   - **Firecrawl** — `packages/coding-agent/src/web/search/providers/firecrawl.ts`
-    - Availability: credentials admit it to the automatic chain; explicit/configured selection is always available and uses keyless mode when no credential resolves.
-    - Querying: POST `https://api.firecrawl.dev/v2/search` with `sources: [{ type: "web" }]`. The endpoint is built by the shared resolver in `packages/coding-agent/src/web/firecrawl.ts`, which applies the `FIRECRAWL_BASE_URL` (alias `FIRECRAWL_API_URL`) self-hosting override. Google-style operators are formatted into the query; `recency` and parsed absolute dates map to `tbs`.
-    - `limit` / `num_search_results`: collapsed and clamped to `1..100`, default `10`; output `sources`, `requestId`, and `authMode: "api_key" | "keyless"`.
-    - The same module exposes Firecrawl `/scrape` as a `providers.fetch` reader backend for the fetch/read URL tool (requires `FIRECRAWL_API_KEY`). API reference: [docs.firecrawl.dev](https://docs.firecrawl.dev).
+    - 可用性：凭据允许其进入自动链；显式/配置选择始终可用，无凭据解析时使用无密钥模式。
+    - 查询：POST `https://api.firecrawl.dev/v2/search`，带 `sources: [{ type: "web" }]`。端点由 `packages/coding-agent/src/web/firecrawl.ts` 中的共享解析器构建，该解析器应用 `FIRECRAWL_BASE_URL`（别名 `FIRECRAWL_API_URL`）自托管覆盖。Google 风格运算符被格式进 query；`recency` 与解析出的绝对日期映射到 `tbs`。
+    - `limit` / `num_search_results`：折叠并钳制到 `1..100`、默认 `10`；输出 `sources`、`requestId` 与 `authMode: "api_key" | "keyless"`。
+    - 同一模块把 Firecrawl `/scrape` 暴露为 fetch/read URL 工具的 `providers.fetch` reader 后端（要求 `FIRECRAWL_API_KEY`）。API 参考：[docs.firecrawl.dev](https://docs.firecrawl.dev)。
   - **Brave** — `packages/coding-agent/src/web/search/providers/brave.ts`
-    - Availability: `BRAVE_API_KEY` only.
-    - Querying: GET `https://api.search.brave.com/res/v1/web/search` with `count`, `extra_snippets=true`, and `freshness=pd|pw|pm|py` for `recency`.
-    - `limit` / `num_search_results`: `params.numSearchResults ?? params.limit`, clamped to `1..20`, default `10`.
-    - Output: `sources`, `requestId`.
+    - 可用性：仅 `BRAVE_API_KEY`。
+    - 查询：GET `https://api.search.brave.com/res/v1/web/search`，带 `count`、`extra_snippets=true`，并为 `recency` 带 `freshness=pd|pw|pm|py`。
+    - `limit` / `num_search_results`：`params.numSearchResults ?? params.limit`，钳制到 `1..20`、默认 `10`。
+    - 输出：`sources`、`requestId`。
   - **Kimi** — `packages/coding-agent/src/web/search/providers/kimi.ts`
-    - Availability: `MOONSHOT_SEARCH_API_KEY`, `KIMI_SEARCH_API_KEY`, or an `agent.db` credential for `kimi-code`. `MOONSHOT_API_KEY` and stored `moonshot` credentials are intentionally rejected because the Open Platform key does not authenticate the Kimi Code search service.
-    - Querying: POST to `MOONSHOT_SEARCH_BASE_URL` / `KIMI_SEARCH_BASE_URL` / default `https://api.kimi.com/coding/v1/search` with `text_query`, `limit`, `enable_page_crawling`, `timeout_seconds: 30`.
-    - `limit` / `num_search_results`: `params.numSearchResults ?? params.limit`, clamped to `1..20`, default `10`.
-    - Output: `sources`, `requestId`.
-  - **Parallel** — `packages/coding-agent/src/web/search/providers/parallel.ts`, `packages/coding-agent/src/web/parallel.ts`
-    - Availability: env or `agent.db` credential for `parallel`.
-    - Querying: POST `https://api.parallel.ai/v1beta/search` with `objective=query`, `search_queries=[query]`, `mode:"fast"`, `max_chars_per_result: 10000`, beta header `search-extract-2025-10-10`.
-    - There is no provider fan-out here despite the name; the current adapter always sends a one-element `search_queries` array.
-    - `limit` and `num_search_results` are collapsed together before dispatch, clamped to `1..40`, default `10`.
-    - Output: `sources`, `requestId`.
+    - 可用性：`MOONSHOT_SEARCH_API_KEY`、`KIMI_SEARCH_API_KEY` 或 `agent.db` 中 `kimi-code` 的凭据。`MOONSHOT_API_KEY` 与存储的 `moonshot` 凭据会被有意拒绝，因为 Open Platform key 无法认证 Kimi Code 搜索服务。
+    - 查询：POST 到 `MOONSHOT_SEARCH_BASE_URL` / `KIMI_SEARCH_BASE_URL` / 默认 `https://api.kimi.com/coding/v1/search`，带 `text_query`、`limit`、`enable_page_crawling`、`timeout_seconds: 30`。
+    - `limit` / `num_search_results`：`params.numSearchResults ?? params.limit`，钳制到 `1..20`、默认 `10`。
+    - 输出：`sources`、`requestId`。
+  - **Parallel** — `packages/coding-agent/src/web/search/providers/parallel.ts`、`packages/coding-agent/src/web/parallel.ts`
+    - 可用性：`parallel` 的 env 或 `agent.db` 凭据。
+    - 查询：POST `https://api.parallel.ai/v1beta/search`，带 `objective=query`、`search_queries=[query]`、`mode:"fast"`、`max_chars_per_result: 10000`、beta 请求头 `search-extract-2025-10-10`。
+    - 尽管名为 Parallel，这里没有 provider fan-out；当前适配器总是发送单元素 `search_queries` 数组。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起，钳制到 `1..40`、默认 `10`。
+    - 输出：`sources`、`requestId`。
   - **Synthetic** — `packages/coding-agent/src/web/search/providers/synthetic.ts`
-    - Availability: env or `agent.db` credential for `synthetic`.
-    - Querying: POST `https://api.synthetic.new/v2/search` with `{ query }`.
-    - Ignores `recency`, `max_tokens`, and `temperature`.
-    - `limit` and `num_search_results` are collapsed together before dispatch.
-    - Output: `sources` only.
+    - 可用性：`synthetic` 的 env 或 `agent.db` 凭据。
+    - 查询：POST `https://api.synthetic.new/v2/search`，带 `{ query }`。
+    - 忽略 `recency`、`max_tokens` 与 `temperature`。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起。
+    - 输出：仅 `sources`。
   - **SearXNG** — `packages/coding-agent/src/web/search/providers/searxng.ts`
-    - Availability: endpoint from `searxng.endpoint` setting or `SEARXNG_ENDPOINT` env.
-    - Querying: GET `<endpoint>/search?format=json&q=...`; optional settings add `categories` and `language`.
-    - Auth precedence: Basic auth (`searxng.basicUsername` / `searxng.basicPassword` or env equivalents) over bearer token (`searxng.token` / `SEARXNG_TOKEN`). Basic credentials are validated for RFC 7617 restrictions.
-    - `recency` maps to `time_range`; `week` is downgraded to `month` because SearXNG does not support week.
-    - `limit` and `num_search_results` are collapsed together before dispatch, clamped to `1..20`, default `10`.
-    - Output: `sources`, `relatedQuestions` from `suggestions`.
+    - 可用性：`searxng.endpoint` 设置或 `SEARXNG_ENDPOINT` env 中的端点。
+    - 查询：GET `<endpoint>/search?format=json&q=...`；可选设置会加上 `categories` 与 `language`。
+    - 认证优先级：Basic 认证（`searxng.basicUsername` / `searxng.basicPassword` 或对应 env）优先于 bearer token（`searxng.token` / `SEARXNG_TOKEN`）。Basic 凭据会按 RFC 7617 限制校验。
+    - `recency` 映射到 `time_range`；`week` 降级为 `month`，因为 SearXNG 不支持 week。
+    - `limit` 与 `num_search_results` 在分发前折叠到一起，钳制到 `1..20`、默认 `10`。
+    - 输出：`sources`，来自 `suggestions` 的 `relatedQuestions`。
   - **DuckDuckGo** — `packages/coding-agent/src/web/search/providers/duckduckgo.ts`
-    - Availability: always available; no API key.
-    - Querying: POST the no-JS HTML frontend `https://html.duckduckgo.com/html/` with `q`, `kl=us-en`, and an optional `df` recency filter (`d`/`w`/`m`/`y`); parses the result list and unwraps `//duckduckgo.com/l/?uddg=…` redirect URLs.
-    - `recency` maps to `df`; values outside `day|week|month|year` are ignored.
-    - `limit` / `num_search_results`: collapsed and clamped to `1..20`, default `10`; output exposes `sources` only (DuckDuckGo's HTML page does not return a standalone abstract).
-    - DuckDuckGo serves a bot-detection challenge (HTTP 200/202 with an `anomaly-modal` body) when it throttles datacenter or shared-egress IPs. The adapter detects this and raises a `SearchProviderError` so the orchestrator can fall through to the next configured provider with a clear cause.
+    - 可用性：始终可用；无 API key。
+    - 查询：POST 无 JS HTML 前端 `https://html.duckduckgo.com/html/`，带 `q`、`kl=us-en` 与可选的 `df` recency 过滤器（`d`/`w`/`m`/`y`）；解析结果列表并解开 `//duckduckgo.com/l/?uddg=…` 重定向 URL。
+    - `recency` 映射到 `df`；`day|week|month|year` 之外的值被忽略。
+    - `limit` / `num_search_results`：折叠并钳制到 `1..20`、默认 `10`；输出只暴露 `sources`（DuckDuckGo 的 HTML 页不返回独立 abstract）。
+    - DuckDuckGo 在限流数据中心或共享出口 IP 时会抛出 bot 检测挑战（HTTP 200/202 带 `anomaly-modal` body）。适配器检测到这一点并抛出 `SearchProviderError`，使 orchestrator 能带着明确原因落到下一个配置的 provider。
   - **Startpage** — `packages/coding-agent/src/web/search/providers/startpage.ts`
-    - Availability: always available; no API key. It proxies Google's index, GETs the homepage to obtain the `sc` anti-bot form token, then POSTs `/sp/search` (with a tokenless GET fallback). `recency` maps to `with_date=d|w|m|y`.
-    - Bot/challenge or consent pages raise a provider-tagged `SearchProviderError` (429) so the chain advances.
-  - **Google / Ecosia / Mojeek** — `providers/google.ts`, `providers/ecosia.ts`, `providers/mojeek.ts`
-    - Availability: always available; no API key. `browserFetch` (`providers/browser-page.ts`) tries a browser-profiled plain fetch first and escalates fetch failures, non-2xx statuses, and challenge bodies to the shared stealth headless browser (`acquireBrowser`); an injected `params.fetch` (tests) never escalates.
-    - Google: seeds cookies via the homepage, then loads the rendered SERP; `recency` maps to `tbs=qdr:*`. Ecosia sits behind Cloudflare (hence the browser); its organic results are Google-backed; `recency` is a server-side no-op and silently ignored. Mojeek fronts an ALTCHA proof-of-work wall that the browser path auto-solves; `recency` maps to `since=day|week|month|year`.
-    - Challenge pages (Google `unusual traffic`, Ecosia Firewall, Mojeek ALTCHA/robot 403) raise provider-tagged `SearchProviderError`s (429).
+    - 可用性：始终可用；无 API key。它代理 Google 的索引，GET 首页以获得 `sc` 反 bot 表单 token，然后 POST `/sp/search`（带无 token 的 GET 回退）。`recency` 映射为 `with_date=d|w|m|y`。
+    - bot/挑战或同意页会抛出带 provider 标签的 `SearchProviderError`（429），使链前进。
+  - **Google / Ecosia / Mojeek** — `providers/google.ts`、`providers/ecosia.ts`、`providers/mojeek.ts`
+    - 可用性：始终可用；无 API key。`browserFetch`（`providers/browser-page.ts`）先尝试带浏览器特征的普通 fetch，并把 fetch 失败、非 2xx 状态与挑战 body 升级到共享的 stealth 无头浏览器（`acquireBrowser`）；注入的 `params.fetch`（测试用）从不升级。
+    - Google：先经首页播种 cookies，再加载渲染后的 SERP；`recency` 映射为 `tbs=qdr:*`。Ecosia 位于 Cloudflare 之后（因此需要浏览器）；其自然结果是 Google 支撑的；`recency` 是服务端 no-op 并被静默忽略。Mojeek 前端有 ALTCHA proof-of-work 墙，浏览器路径会自动解决；`recency` 映射为 `since=day|week|month|year`。
+    - 挑战页（Google `unusual traffic`、Ecosia Firewall、Mojeek ALTCHA/robot 403）会抛出带 provider 标签的 `SearchProviderError`（429）。
   - **Public Web** — `packages/coding-agent/src/web/search/providers/public.ts`
-    - Availability: explicit selection only (`isAvailable()` is `false`; `isExplicitlyAvailable()` is `true`).
-    - Querying: fans out to the five credential-free engines (`startpage`, `google`, `duckduckgo`, `ecosia`, `mojeek`, minus excluded ones), then consolidates. URLs are deduplicated on a canonical key (host without `www.`, normalized trailing slash, query preserved, fragment removed), ranked by cross-engine consensus, then best per-engine rank; the longest snippet wins.
-    - Deadline race: returns at the earliest of all engines settled, 5s soft deadline with at least one success, or 30s hard cap; stragglers are aborted. Individual engine failures are tolerated; it fails only when every engine fails.
+    - 可用性：仅显式选择（`isAvailable()` 为 `false`；`isExplicitlyAvailable()` 为 `true`）。
+    - 查询：fan-out 到五个免凭据引擎（`startpage`、`google`、`duckduckgo`、`ecosia`、`mojeek`，减去被排除的），然后整合。URL 按规范化 key 去重（去掉 `www.` 的主机、规范化尾部斜杠、保留 query、去掉 fragment），按跨引擎共识排名，其次按每个引擎最佳排名；最长的 snippet 胜出。
+    - 截止竞速：在所有引擎都结束、5s 软截止且至少一次成功、或 30s 硬上限中取最早者返回；落后者被中止。单个引擎失败可容忍；只有当所有引擎都失败时才失败。
 
-## Side Effects
-- Network
-  - Calls one or more external search providers over HTTPS until one succeeds or all fail.
-  - Provider-specific transports include JSON POST, JSON GET, SSE streaming (Perplexity OAuth/API, Gemini, Codex), and JSON-RPC over HTTP (Z.AI).
-- Subprocesses / native bindings
-  - Most HTTP/API adapters spawn nothing. Google, Ecosia, and Mojeek first try a plain fetch, but failed, non-2xx, or challenged production responses can acquire the project-shared broker-owned headless Chromium. Hosts without a CLI worker entry (such as an embedded SDK host) instead launch process-local Chromium.
-  - This fallback can start a Chromium process and create its browser-profile lifecycle. On first browser use it can also download Chromium into the omp Puppeteer cache unless a system Chromium or `PUPPETEER_EXECUTABLE_PATH` is available. The search adapter itself uses no native binding.
-- Session state (transcript, memory, jobs, checkpoints, registries)
-  - Uses a module-global provider-instance cache in `packages/coding-agent/src/web/search/provider.ts`.
-  - Uses a module-global preferred-provider setting in the same file.
-  - `packages/coding-agent/src/tools/index.ts` gates tool availability behind `session.settings.get("web_search.enabled")`.
-- Background work / cancellation
-  - Many provider adapters accept `AbortSignal`; `WebSearchTool.execute()` passes the tool call signal into `executeSearch()`, which forwards it as `params.signal` to providers and rethrows cancellation during fallback.
+## 副作用
+- 网络
+  - 通过 HTTPS 调用一个或多个外部搜索 provider，直到一个成功或全部失败。
+  - provider 特定传输包括 JSON POST、JSON GET、SSE 流（Perplexity OAuth/API、Gemini、Codex）与基于 HTTP 的 JSON-RPC（Z.AI）。
+- 子进程 / 原生绑定
+  - 大多数 HTTP/API 适配器不产生任何进程。Google、Ecosia 与 Mojeek 先尝试普通 fetch，但失败、非 2xx 或带挑战的生产响应可能获取项目共享、broker 所有的无头 Chromium。没有 CLI worker 条目的宿主（如嵌入式 SDK 宿主）则启动进程内 Chromium。
+  - 该回退可能启动 Chromium 进程并创建其浏览器配置生命周期。首次使用浏览器时，除非存在系统 Chromium 或 `PUPPETEER_EXECUTABLE_PATH`，它还可能在 omp Puppeteer 缓存中下载 Chromium。搜索适配器本身不使用任何原生绑定。
+- 会话状态（transcript、memory、jobs、checkpoints、registries）
+  - 使用 `packages/coding-agent/src/web/search/provider.ts` 中的模块级 provider 实例缓存。
+  - 使用同一文件中的模块级首选 provider 设置。
+  - `packages/coding-agent/src/tools/index.ts` 通过 `session.settings.get("web_search.enabled")` 门控工具可用性。
+- 后台工作 / 取消
+  - 许多 provider 适配器接受 `AbortSignal`；`WebSearchTool.execute()` 把工具调用 signal 传入 `executeSearch()`，后者作为 `params.signal` 转发给 providers，并在 fallback 期间重新抛出取消。
 
-## Limits & Caps
-- Provider auto-order length: 23 providers (`SEARCH_PROVIDER_ORDER` in `packages/coding-agent/src/web/search/types.ts`).
-- `formatForLLM()` truncates source snippets and citation text to 240 chars (`packages/coding-agent/src/web/search/index.ts`).
-- `formatForLLM()` emits at most 3 search queries, each truncated to 120 chars (`packages/coding-agent/src/web/search/index.ts`).
-- Brave result count: default `10`, max `20` (`DEFAULT_NUM_RESULTS`, `MAX_NUM_RESULTS` in `packages/coding-agent/src/web/search/providers/brave.ts`).
-- TinyFish local result count: default `10`, max `20`; the API has no count parameter and returns at most 10 results per page, so the adapter fetches documented pages (`page=0`, then `page=1` when needed) and slices locally (`packages/coding-agent/src/web/search/providers/tinyfish.ts`).
-- DuckDuckGo result count: default `10`, max `20` (`packages/coding-agent/src/web/search/providers/duckduckgo.ts`).
-- Startpage / Google / Ecosia / Mojeek result count: default `10`, max `20` (their `providers/*.ts` modules).
-- Public Web result count: default `15`, max `30`; fan-out soft deadline `5s`, hard cap `30s` (`packages/coding-agent/src/web/search/providers/public.ts`).
-- Tavily result count: default `5`, max `20` (`packages/coding-agent/src/web/search/providers/tavily.ts`).
-- Firecrawl result count: default `10`, max `100` (`packages/coding-agent/src/web/search/providers/firecrawl.ts`).
-- Kimi result count: default `10`, max `20`; request timeout field fixed to `30` seconds (`packages/coding-agent/src/web/search/providers/kimi.ts`).
-- Parallel result count: default `10`, max `40`; per-result excerpt cap `10_000` chars (`packages/coding-agent/src/web/search/providers/parallel.ts`, `packages/coding-agent/src/web/parallel.ts`).
-- Kagi result count: default `10`, max `40` (`packages/coding-agent/src/web/search/providers/kagi.ts`).
-- SearXNG result count: default `10`, max `20` (`packages/coding-agent/src/web/search/providers/searxng.ts`).
-- xAI local sources/citations cap: `num_search_results` before `limit`, omitted/invalid/zero => default `10`, max `30`; the count is not sent upstream (`packages/coding-agent/src/web/search/providers/xai.ts`).
-- Perplexity API-key mode defaults: `max_tokens = 8192`, `temperature = 0.2`, `num_search_results = 20` (`packages/coding-agent/src/web/search/providers/perplexity.ts`).
-- Anthropic defaults: model `claude-haiku-4-5`, `DEFAULT_MAX_TOKENS = 4096` when the provider omits `max_tokens` (`packages/coding-agent/src/web/search/providers/anthropic.ts`).
-- Gemini retries: up to `3` retries per endpoint, base delay `1000` ms, rate-limit delay budget `5 * 60 * 1000` ms (`packages/coding-agent/src/web/search/providers/gemini.ts`).
+## 限制与上限
+- provider 自动顺序长度：23 个 provider（`packages/coding-agent/src/web/search/types.ts` 中的 `SEARCH_PROVIDER_ORDER`）。
+- `formatForLLM()` 把 source snippet 与 citation 文本截断到 240 字符（`packages/coding-agent/src/web/search/index.ts`）。
+- `formatForLLM()` 最多发出 3 个搜索 queries，每个截断到 120 字符（`packages/coding-agent/src/web/search/index.ts`）。
+- Brave 结果数量：默认 `10`、最大 `20`（`packages/coding-agent/src/web/search/providers/brave.ts` 中的 `DEFAULT_NUM_RESULTS`、`MAX_NUM_RESULTS`）。
+- TinyFish 本地结果数量：默认 `10`、最大 `20`；API 没有 count 参数且每页最多返回 10 条结果，因此适配器抓取文档化的页（`page=0`，需要时再 `page=1`）并本地切片（`packages/coding-agent/src/web/search/providers/tinyfish.ts`）。
+- DuckDuckGo 结果数量：默认 `10`、最大 `20`（`packages/coding-agent/src/web/search/providers/duckduckgo.ts`）。
+- Startpage / Google / Ecosia / Mojeek 结果数量：默认 `10`、最大 `20`（各自的 `providers/*.ts` 模块）。
+- Public Web 结果数量：默认 `15`、最大 `30`；fan-out 软截止 `5s`、硬上限 `30s`（`packages/coding-agent/src/web/search/providers/public.ts`）。
+- Tavily 结果数量：默认 `5`、最大 `20`（`packages/coding-agent/src/web/search/providers/tavily.ts`）。
+- Firecrawl 结果数量：默认 `10`、最大 `100`（`packages/coding-agent/src/web/search/providers/firecrawl.ts`）。
+- Kimi 结果数量：默认 `10`、最大 `20`；请求超时字段固定为 `30` 秒（`packages/coding-agent/src/web/search/providers/kimi.ts`）。
+- Parallel 结果数量：默认 `10`、最大 `40`；每条结果摘录上限 `10_000` 字符（`packages/coding-agent/src/web/search/providers/parallel.ts`、`packages/coding-agent/src/web/parallel.ts`）。
+- Kagi 结果数量：默认 `10`、最大 `40`（`packages/coding-agent/src/web/search/providers/kagi.ts`）。
+- SearXNG 结果数量：默认 `10`、最大 `20`（`packages/coding-agent/src/web/search/providers/searxng.ts`）。
+- xAI 本地 sources/citations 上限：`num_search_results` 优先于 `limit`，省略/无效/零 => 默认 `10`、最大 `30`；该数量不上送（`packages/coding-agent/src/web/search/providers/xai.ts`）。
+- Perplexity API-key 模式默认值：`max_tokens = 8192`、`temperature = 0.2`、`num_search_results = 20`（`packages/coding-agent/src/web/search/providers/perplexity.ts`）。
+- Anthropic 默认值：模型 `claude-haiku-4-5`，provider 省略 `max_tokens` 时 `DEFAULT_MAX_TOKENS = 4096`（`packages/coding-agent/src/web/search/providers/anthropic.ts`）。
+- Gemini 重试：每个端点最多 `3` 次重试，基础延迟 `1000` ms，限流延迟预算 `5 * 60 * 1000` ms（`packages/coding-agent/src/web/search/providers/gemini.ts`）。
 
-## Errors
-- Tool-level no-provider case returns a normal tool result with `Error: No web search provider configured.`; it does not throw.
-- Tool-level all-failed case also returns a normal tool result with `Error: ...`; the message is either the single normalized provider error or a semicolon-separated summary of all failed providers.
-- Provider adapters usually throw `SearchProviderError(provider, message, status)` for HTTP or protocol failures.
-- Availability probes intentionally swallow lookup errors and report `false` in many providers via `isApiKeyAvailable()`.
-- Per-provider notable failures:
-  - Anthropic: missing credentials throw a plain `Error`; a `404` is remapped to a special final message by `formatProviderError()`.
-  - Perplexity: missing auth throws a plain `Error`; OAuth stream `error_code` events become `SearchProviderError("perplexity", ...)`.
-  - Gemini: auth refresh, endpoint fallback, and retry logic are internal; final exhausted failures surface as `SearchProviderError("gemini", ...)`.
-  - Codex and Gemini both fail if the HTTP response has no body after a `200`.
-  - Z.AI treats malformed SSE/JSON-RPC payloads as provider errors and retries only argument-shape failures across request variants.
-  - SearXNG `findAuth()` can throw configuration errors before any HTTP call if Basic auth fields are incomplete or invalid.
+## 错误
+- 工具级无 provider 情况返回普通工具结果，带 `Error: No web search provider configured.`；不会抛出。
+- 工具级全部失败情况也返回普通工具结果，带 `Error: ...`；消息要么是单个规范化后的 provider 错误，要么是所有失败 provider 的分号分隔摘要。
+- provider 适配器通常对 HTTP 或协议失败抛出 `SearchProviderError(provider, message, status)`。
+- 可用性探测在许多 provider 中有意吞掉查找错误并通过 `isApiKeyAvailable()` 报告 `false`。
+- 各 provider 值得注意的失败：
+  - Anthropic：缺少凭据抛出普通 `Error`；`404` 由 `formatProviderError()` 重映射为特殊最终消息。
+  - Perplexity：缺少认证抛出普通 `Error`；OAuth 流的 `error_code` 事件变成 `SearchProviderError("perplexity", ...)`。
+  - Gemini：认证刷新、端点回退与重试逻辑是内部的；最终耗尽失败表现为 `SearchProviderError("gemini", ...)`。
+  - Codex 与 Gemini 在 HTTP 响应 `200` 后无 body 时都会失败。
+  - Z.AI 把畸形 SSE/JSON-RPC payload 当作 provider 错误，并只在请求变体之间重试参数形状失败。
+  - SearXNG 的 `findAuth()` 在 Basic 认证字段不完整或无效时，可能在任何 HTTP 调用前抛出配置错误。
 
-## Notes
-- The model-facing schema does not expose `provider`, but internal callers can force one through `SearchQueryParams`.
-- `executeSearch()` walks `resolveProviderCandidates()` lazily; `resolveProviderChain()` remains a compatibility helper that loads every candidate. Provider instances are cached, and asking for labels via `getSearchProviderLabel()` does not trigger imports.
-- Most providers treat `limit` and `num_search_results` as the same number because adapters pass `params.numSearchResults ?? params.limit`. Perplexity preserves both concepts. TinyFish uses the collapsed value as a local cap, serializes `num_results` per page, and paginates when more results are needed. xAI uses it only to cap parsed sources/citations (`10` default, `30` max).
-- `recency` has native or engine-query mappings in Brave, Perplexity, Tavily, SearXNG, Kagi, TinyFish, Firecrawl, DuckDuckGo, Startpage, Google, and Mojeek. xAI retains absolute date directives as natural-language query hints because its current Responses tool has no date parameters; Ecosia ignores recency. Public Web passes the request through to its engines.
-- `packages/coding-agent/src/config/settings-schema.ts` uses the shared `SEARCH_PROVIDER_PREFERENCES` / `SEARCH_PROVIDER_OPTIONS` metadata, so the settings selector and setup wizard expose `auto` plus every provider in the auto chain.
-- The credential-free scrapers close the auto chain: Startpage and DuckDuckGo precede the browser-backed Ecosia, Google, and Mojeek paths; `public` is listed last and never auto-selected.
-- `/login exa` stores the pasted key in AuthStorage; Exa resolves stored or environment credentials before the unauthenticated `https://mcp.exa.ai/mcp` fallback.
+## 备注
+- 面向模型的 schema 不暴露 `provider`，但内部调用方可以通过 `SearchQueryParams` 强制指定一个。
+- `executeSearch()` 惰性遍历 `resolveProviderCandidates()`；`resolveProviderChain()` 仍是加载每个候选的兼容辅助函数。provider 实例会被缓存，通过 `getSearchProviderLabel()` 索取标签不会触发 import。
+- 大多数 provider 把 `limit` 与 `num_search_results` 视为同一个数字，因为适配器传 `params.numSearchResults ?? params.limit`。Perplexity 保留这两个概念。TinyFish 把折叠后的值用作本地上限、按页序列化 `num_results`，并在需要更多结果时分页。xAI 只用它限制解析出的 sources/citations（默认 `10`、最大 `30`）。
+- `recency` 在 Brave、Perplexity、Tavily、SearXNG、Kagi、TinyFish、Firecrawl、DuckDuckGo、Startpage、Google 与 Mojeek 中有原生或引擎 query 映射。xAI 因当前 Responses 工具没有日期参数而把绝对日期指令保留为自然语言 query 提示；Ecosia 忽略 recency。Public Web 把请求透传给其引擎。
+- `packages/coding-agent/src/config/settings-schema.ts` 使用共享的 `SEARCH_PROVIDER_PREFERENCES` / `SEARCH_PROVIDER_OPTIONS` 元数据，因此设置选择器与设置向导暴露 `auto` 以及自动链中的每个 provider。
+- 免凭据抓取器收尾自动链：Startpage 与 DuckDuckGo 位于浏览器后端 Ecosia、Google 与 Mojeek 路径之前；`public` 列在最后且从不自动选择。
+- `/login exa` 把粘贴的 key 存入 AuthStorage；Exa 在未认证的 `https://mcp.exa.ai/mcp` 回退之前解析存储或环境凭据。

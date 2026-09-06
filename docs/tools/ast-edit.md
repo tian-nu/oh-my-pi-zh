@@ -1,123 +1,123 @@
 # ast_edit
 
-> Preview and apply structural rewrites over source files via native ast-grep.
+> 通过原生 ast-grep 预览并应用针对源文件的结构化重写。
 
-## Source
-- Entry: `packages/coding-agent/src/tools/ast-edit.ts`
-- Model-facing prompt: `packages/coding-agent/src/prompts/tools/ast-edit.md`
-- Key collaborators:
-  - `crates/pi-natives/src/ast.rs` — native rewrite planning and file mutation
-  - `crates/pi-ast/src/language/mod.rs` — language aliases and extension inference used by the native wrapper.
-  - `packages/coding-agent/src/tools/path-utils.ts` — path/glob parsing and multi-path resolution
-  - `packages/coding-agent/src/tools/resolve.ts` — preview/apply queueing
-  - `packages/coding-agent/src/tools/render-utils.ts` — parse-error dedupe and display caps
-  - `packages/coding-agent/src/utils/file-display-mode.ts` — hashline vs line-number diff references
-  - `packages/hashline/src/format.ts` — stable hashline header formatting for preview anchors
-  - `packages/natives/native/index.d.ts` — JS-visible native binding contract
+## 源码
+- 入口：`packages/coding-agent/src/tools/ast-edit.ts`
+- 面向模型的 prompt：`packages/coding-agent/src/prompts/tools/ast-edit.md`
+- 关键协作模块：
+  - `crates/pi-natives/src/ast.rs` — 原生重写规划与文件变更
+  - `crates/pi-ast/src/language/mod.rs` — 原生 wrapper 使用的语言别名与扩展名推断
+  - `packages/coding-agent/src/tools/path-utils.ts` — 路径/glob 解析与多路径解析
+  - `packages/coding-agent/src/tools/resolve.ts` — 预览/应用排队
+  - `packages/coding-agent/src/tools/render-utils.ts` — 解析错误去重与显示上限
+  - `packages/coding-agent/src/utils/file-display-mode.ts` — hashline 与行号 diff 引用
+  - `packages/hashline/src/format.ts` — 为预览锚点生成稳定的 hashline 标题格式
+  - `packages/natives/native/index.d.ts` — JS 可见的原生绑定契约
 
-## Inputs
+## 输入
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `ops` | `{ pat: string; out: string }[]` | Yes | One or more rewrite rules. `pat` must be non-empty. Duplicate `pat` values fail before native execution. Empty `out` deletes the matched node. |
-| `paths` | `string[]` | Yes | One or more files, directories, globs, or path-backed internal URLs. At least one non-empty entry is required. Internal-URL globs are rejected; fetched external URLs are read-only and cannot be rewritten. |
+| `ops` | `{ pat: string; out: string }[]` | 是 | 一条或多条重写规则。`pat` 不能为空。重复的 `pat` 值会在原生执行前失败。空的 `out` 删除命中的节点。 |
+| `paths` | `string[]` | 是 | 一个或多个文件、目录、glob 或由路径支撑的内部 URL。至少需要一个非空条目。内部 URL 的 glob 会被拒绝；抓取来的外部 URL 只读，不能被重写。 |
 
-Shared AST pattern grammar and language catalog: see [`ast_grep`](./ast-grep.md#inputs).
+共享的 AST 模式语法与语言目录：见 [`ast_grep`](./ast-grep.md#inputs)。
 
-- `ast_edit` uses the same `$NAME`, `$_`, `$$$NAME`, and `$$$` metavariable semantics.
-- The tool prompt adds rewrite-specific constraints:
-  - metavariable names must be uppercase and must stand for whole AST nodes,
-  - captures from `pat` are substituted into `out`,
-  - each rewrite is a 1:1 structural substitution; one capture cannot expand into multiple sibling nodes unless the grammar itself permits that expansion at that position.
+- `ast_edit` 使用相同的 `$NAME`、`$_`、`$$$NAME` 与 `$$$` 元变量语义。
+- 工具 prompt 增加了重写相关的约束：
+  - 元变量名必须大写，且必须代表完整的 AST 节点，
+  - `pat` 中的捕获会被代入 `out`，
+  - 每次重写都是 1:1 的结构替换；一个捕获不能展开成多个兄弟节点，除非语法本身允许在该位置展开。
 
-`ast_edit` is enabled by default by `astEdit.enabled`. It is discoverable rather than part of the essential tool set.
+`ast_edit` 由 `astEdit.enabled` 默认启用。它是可发现的，而非必需工具集的一部分。
 
-## Outputs
-- Single-shot preview result from `ast_edit` itself. A non-empty proposal begins with `Staged as a proposal — files NOT modified yet...` and names the resolve/reject device paths.
-- Model-facing `content` is one text block showing proposed edits, grouped by file for directory/multi-file runs.
-  - Each change renders as two lines. Hashline mode uses `-LINE:before` / `+LINE:after` under a `[PATH#TAG]` header; plain mode uses `-LINE:COLUMN before` / `+LINE:COLUMN after`.
-  - Only the first line of each `before`/`after` snippet is shown, truncated to 120 characters in the wrapper.
-  - `Limit reached; narrow paths.` and formatted parse issues are appended when applicable.
-- If no rewrites match, text is `No replacements made` plus formatted parse issues when present.
-- `details` includes aggregate preview metadata:
-  - `totalReplacements`, `filesTouched`, `filesSearched`, `applied`, `limitReached`
-  - optional `parseErrors`, `parseErrorsTotal`, `scopePath`, `files`, `fileReplacements`, `displayContent`, `searchPath`, `cwd`, `meta`
-- The tool always previews first (`applied: false` in the direct result). Actual file writes happen only later through a plain-text `write` to `xd://resolve`; the body is the reason.
-- When preview produced replacements, `ast_edit` also queues a pending resolve action. Successful apply returns a separate resolve dispatch result (on the `write` call), not another `ast_edit` result.
+## 输出
+- `ast_edit` 本身的单次预览结果。非空提案以 `Staged as a proposal — files NOT modified yet...` 开头，并指明 resolve/reject 设备路径。
+- 面向模型的 `content` 是一个文本块，按文件分组展示提议的编辑（针对目录/多文件运行）。
+  - 每处变更渲染为两行。hashline 模式在 `[PATH#TAG]` 标题下使用 `-LINE:before` / `+LINE:after`；plain 模式使用 `-LINE:COLUMN before` / `+LINE:COLUMN after`。
+  - 每个 `before`/`after` 片段只显示首行，并在 wrapper 中被截断到 120 字符。
+  - 适用时追加 `Limit reached; narrow paths.` 以及格式化后的解析问题。
+- 若无重写命中，文本为 `No replacements made`；存在解析问题时再加上格式化后的解析问题。
+- `details` 包含汇总的预览元数据：
+  - `totalReplacements`、`filesTouched`、`filesSearched`、`applied`、`limitReached`
+  - 可选的 `parseErrors`、`parseErrorsTotal`、`scopePath`、`files`、`fileReplacements`、`displayContent`、`searchPath`、`cwd`、`meta`
+- 工具始终先预览（直接结果中 `applied: false`）。真正的文件写入只会在之后通过向 `xd://resolve` 的纯文本 `write` 发生；正文即理由。
+- 当预览产生了替换时，`ast_edit` 还会排队一个待处理的 resolve 动作。成功的 apply 返回的是单独的 resolve 分发结果（在 `write` 调用上），而不是另一个 `ast_edit` 结果。
 
-## Flow
-1. `AstEditTool.execute()` validates each op in `packages/coding-agent/src/tools/ast-edit.ts`:
-   - empty `pat` fails,
-   - at least one op is required,
-   - duplicate `pat` values fail,
-   - ops are converted to a `Record<pattern, replacement>`.
-2. The wrapper reads `PI_MAX_AST_FILES` via `$envpos(..., 1000)` and uses that as the native `maxFiles` cap for both preview and apply.
-3. Path normalization, internal URL handling, missing-path partitioning, and multi-path resolution follow the same `path-utils.ts` flow as `ast_grep`.
-4. The scope's `isDirectory` flag (set by a stat in `resolveToolSearchScope`) decides whether to render grouped directory output.
-5. `runAstEditOnce(...)` always runs native `astEdit(...)` with `dryRun: true` and `failOnParseError: false` on the first pass.
-6. Native `ast_edit` in `crates/pi-natives/src/ast.rs`:
-   - normalizes the rewrite map and sorts rules by pattern string,
-   - resolves strictness (`smart` by default),
-   - collects candidate files from a file or gitignore-aware directory scan,
-   - infers a language independently for every candidate file unless `lang` was supplied internally,
-   - compiles each rewrite for every discovered language; a rule that cannot parse in one language skips that language's files and reports parse issues,
-   - parses each file, skips files with syntax-error trees, collects `replace_by(...)` edits for every match, enforces replacement and file caps, and returns textual before/after slices plus source ranges.
-7. The TS wrapper deduplicates and caps parse errors, groups changes by file, and renders preview diff lines.
-8. If preview found replacements and `applied` is false, `queueResolveHandler(...)` registers a non-forcing pending resolve invoker. While it is pending the session surfaces a `SoftToolRequirement` (`toolName: "write"` with an `xd://resolve` or `xd://reject` `satisfies` predicate) carrying the resolve reminder; the agent runtime injects the reminder and forces `write` only if the model declines that turn.
-9. On a `write xd://resolve` dispatch, the queued callback reruns the same rewrite set with `dryRun: false`, recomputes counts, and returns an error result if the live result no longer matches the preview (`stalePreview`). The current implementation compares replacement totals and per-file counts after the rerun; if the new run has already written different counts, the result is marked error.
-10. On a non-stale apply, the callback returns `Applied N replacements in M files.` (in hashline mode followed by fresh `[path#tag]` snapshot headers re-recorded from the post-apply content); on discard (`write xd://reject`), the dispatch returns a discard message without mutating files.
+## 流程
+1. `AstEditTool.execute()` 在 `packages/coding-agent/src/tools/ast-edit.ts` 中校验每个 op：
+   - 空的 `pat` 失败，
+   - 至少需要一个 op，
+   - 重复的 `pat` 值失败，
+   - ops 被转换为 `Record<pattern, replacement>`。
+2. wrapper 通过 `$envpos(..., 1000)` 读取 `PI_MAX_AST_FILES`，并将其用作预览与应用的 native `maxFiles` 上限。
+3. 路径规范化、内部 URL 处理、缺失路径划分与多路径解析遵循与 `ast_grep` 相同的 `path-utils.ts` 流程。
+4. 作用域的 `isDirectory` 标志（由 `resolveToolSearchScope` 中的 stat 设置）决定是否渲染分组的目录输出。
+5. `runAstEditOnce(...)` 在首轮始终以 `dryRun: true` 和 `failOnParseError: false` 运行原生 `astEdit(...)`。
+6. `crates/pi-natives/src/ast.rs` 中的原生 `ast_edit`：
+   - 规范化重写映射，并按模式字符串对规则排序，
+   - 解析 strictness（默认 `smart`），
+   - 通过单文件或感知 gitignore 的目录扫描收集候选文件，
+   - 为每个候选文件独立推断语言，除非内部已提供 `lang`，
+   - 为每种发现的语言编译每条重写；在某语言中无法解析的规则会跳过该语言的文件并上报解析问题，
+   - 解析每个文件，跳过带语法错误树的文件，为每个命中收集 `replace_by(...)` 编辑，执行替换数与文件数上限，并返回文本化的 before/after 片段及源范围。
+7. TS wrapper 对解析错误去重并设上限，按文件分组变更，并渲染预览 diff 行。
+8. 若预览发现替换且 `applied` 为 false，`queueResolveHandler(...)` 会注册一个非强制的待处理 resolve 调用器。待处理期间，会话呈现一个携带 resolve 提醒的 `SoftToolRequirement`（`toolName: "write"`，带 `xd://resolve` 或 `xd://reject` 的 `satisfies` 谓词）；agent 运行时注入该提醒，且仅当模型在该轮拒绝时才强制 `write`。
+9. 在 `write xd://resolve` 分发时，排队的回调以 `dryRun: false` 重跑同一组重写，重算计数，若实际结果不再匹配预览（`stalePreview`）则返回错误结果。当前实现会在重跑后比较替换总数与各文件计数；若新一次运行已写出不同的计数，结果会被标记为 error。
+10. 在非 stale 的 apply 上，回调返回 `Applied N replacements in M files.`（hashline 模式下后面跟有根据 apply 后内容重新记录的 `[path#tag]` 快照标题）；在丢弃（`write xd://reject`）时，分发返回丢弃消息而不改动文件。
 
-## Modes / Variants
-- Single file: preview or apply against one file.
-- Directory + optional glob: native scan walks the directory, then filters by compiled glob.
-- Multiple explicit paths/globs: wrapper unions them into one synthetic scope or runs per-target native calls when paths only meet at root.
-- Internal URL inputs: only supported when the router resolves them to a backing file path.
-- Preview mode: always the direct `ast_edit` tool result.
-- Apply mode: only reachable through the queued resolve callback (a `write` to `xd://resolve` or `xd://reject`) after a preview.
-- Hashline output mode vs plain line/column mode: controlled by `resolveFileDisplayMode()`.
+## 模式 / 变体
+- 单文件：针对一个文件预览或应用。
+- 目录 + 可选 glob：原生扫描遍历目录，再按编译后的 glob 过滤。
+- 多个显式路径/glob：wrapper 将它们合并为一个合成作用域；当各路径仅在根处汇合时，则按目标逐个运行原生调用。
+- 内部 URL 输入：仅当 router 将其解析为底层文件路径时才支持。
+- 预览模式：始终是 `ast_edit` 工具的直接结果。
+- 应用模式：只能在预览后通过排队的 resolve 回调（向 `xd://resolve` 或 `xd://reject` 的 `write`）到达。
+- hashline 输出模式与 plain 行/列模式：由 `resolveFileDisplayMode()` 控制。
 
-## Side Effects
-- Filesystem
-  - Preview reads files and scans directories.
-  - Apply stages every changed file in memory, verifies the full pass, then writes the staged files; a later compute/overlap failure cannot partially mutate earlier files.
-- Session state (transcript, memory, jobs, checkpoints, registries)
-  - Registers a non-forcing pending resolve invoker through `queueResolveHandler(...)`.
-  - Surfaces a `SoftToolRequirement` (with the resolve reminder) while pending; the agent runtime forces `write` only on non-compliance — no steering message and no per-preview forced tool choice.
-- User-visible prompts / interactive UI
-  - Direct `ast_edit` results are previews.
-  - Follow-up apply/discard is exposed through writes to `xd://resolve` and `xd://reject`.
-- Background work / cancellation
-  - Native preview/apply work runs on a blocking worker via `task::blocking(...)`.
-  - Cancellation and optional native timeout are cooperative through `CancelToken::heartbeat()`.
+## 副作用
+- 文件系统
+  - 预览读取文件并扫描目录。
+  - apply 先在内存中暂存每个变更文件，校验整轮通过后再写入暂存文件；后续的 compute/overlap 失败不会对先前文件造成部分改动。
+- 会话状态（transcript、memory、jobs、checkpoints、registries）
+  - 通过 `queueResolveHandler(...)` 注册非强制的待处理 resolve 调用器。
+  - 待处理期间呈现带 resolve 提醒的 `SoftToolRequirement`；agent 运行时仅在不合规时强制 `write`——无引导消息，也无每次预览的强制工具选择。
+- 用户可见的 prompt / 交互式 UI
+  - 直接的 `ast_edit` 结果都是预览。
+  - 后续的 apply/丢弃通过向 `xd://resolve` 与 `xd://reject` 的写入暴露。
+- 后台工作 / 取消
+  - 原生预览/应用工作通过 `task::blocking(...)` 在阻塞 worker 上运行。
+  - 取消与可选的原生超时通过 `CancelToken::heartbeat()` 协作完成。
 
-## Limits & Caps
-- File cap exposed by the wrapper: `PI_MAX_AST_FILES`, default `1000`, in `packages/coding-agent/src/tools/ast-edit.ts`.
-- Native `maxFiles` and `maxReplacements` are both clamped to at least `1` when provided in `crates/pi-natives/src/ast.rs`.
-- The wrapper never sets `maxReplacements`; native behavior therefore defaults to effectively unbounded replacements for a run.
-- Parse issues are deduplicated and capped at `PARSE_ERRORS_LIMIT = 20` entries via `capParseErrors(...)` in `packages/coding-agent/src/tools/render-utils.ts`; `details.parseErrors` carries the capped list and `details.parseErrorsTotal` the pre-cap deduplicated count.
-- Directory scans use `include_hidden: true`, `use_gitignore: true`, and skip `node_modules` unless the glob text explicitly mentions `node_modules` in `crates/pi-natives/src/ast.rs`.
-- No separate glob-expansion count cap exists. Candidate count is whatever the resolved path/glob expands to after gitignore filtering, then native `maxFiles` stops mutations after the configured number of touched files.
-- Preview text truncates each rendered `before` and `after` first line to 120 characters in `packages/coding-agent/src/tools/ast-edit.ts`.
+## 限制与上限
+- wrapper 暴露的文件上限：`packages/coding-agent/src/tools/ast-edit.ts` 中的 `PI_MAX_AST_FILES`，默认 `1000`。
+- 原生 `maxFiles` 与 `maxReplacements` 在 `crates/pi-natives/src/ast.rs` 中提供时都会被钳制到至少 `1`。
+- wrapper 从不设置 `maxReplacements`；因此原生行为默认为单次运行内实际上不限制替换数。
+- 解析问题通过 `packages/coding-agent/src/tools/render-utils.ts` 中的 `capParseErrors(...)` 去重并限制在 `PARSE_ERRORS_LIMIT = 20` 条内；`details.parseErrors` 携带受限后的列表，`details.parseErrorsTotal` 携带受限前去重后的数量。
+- 目录扫描使用 `include_hidden: true`、`use_gitignore: true`，并在 `crates/pi-natives/src/ast.rs` 中跳过 `node_modules`，除非 glob 文本显式提到 `node_modules`。
+- 不存在单独的 glob 展开数量上限。候选数量即解析后的路径/glob 在 gitignore 过滤后展开的数量；随后原生 `maxFiles` 会在触及文件数达到配置值后停止变更。
+- 预览文本在 `packages/coding-agent/src/tools/ast-edit.ts` 中把每个渲染出的 `before` 与 `after` 首行截断到 120 字符。
 
-## Errors
-- TS wrapper throws `ToolError` for empty patterns, duplicate rewrite patterns, empty path entries, unsupported internal-URL globs, internal URLs without `sourcePath`, and missing paths.
-- Native code returns hard errors for:
-  - inability to infer a supported language for a candidate (reported as a parse issue in the wrapper's best-effort mode),
-  - unsupported explicit `lang` in internal/native calls,
-  - bad glob compilation or unreadable search roots,
-  - overlapping computed edits (`Overlapping replacements detected; refine pattern to avoid ambiguous edits`),
-  - out-of-bounds edit ranges or non-UTF-8 replacement text,
-  - write failures during apply,
-  - cancellation or timeout.
-- With `failOnParseError: false` (the wrapper always uses this), pattern compile failures and file parse failures become `parseErrors` instead of aborting the whole run.
-- If every rewrite pattern fails to compile, native `ast_edit` returns a successful zero-replacement result with `parseErrors` populated.
-- Files containing tree-sitter error nodes are skipped for rewriting; they do not get partial edits.
-- Apply can fail after a successful preview if the preview becomes stale. The resolve callback compares replacement totals and per-file counts and returns an error result rather than silently reporting success for a mismatched preview.
+## 错误
+- 对空模式、重复的重写模式、空路径条目、不支持的内部 URL glob、无 `sourcePath` 的内部 URL 以及缺失路径，TS wrapper 抛出 `ToolError`。
+- 原生代码对以下情况返回硬错误：
+  - 无法为候选推断出受支持的语言（在 wrapper 的 best-effort 模式下作为解析问题上报），
+  - 内部/原生调用中不支持的显式 `lang`，
+  - glob 编译失败或搜索根不可读，
+  - 计算出的编辑相互重叠（`Overlapping replacements detected; refine pattern to avoid ambiguous edits`），
+  - 越界的编辑范围或非 UTF-8 的替换文本，
+  - apply 期间的写入失败，
+  - 取消或超时。
+- 在 `failOnParseError: false` 下（wrapper 始终如此），模式编译失败与文件解析失败会变成 `parseErrors`，而不是中止整轮运行。
+- 若所有重写模式都编译失败，原生 `ast_edit` 返回成功的零替换结果，并填充 `parseErrors`。
+- 含 tree-sitter error 节点的文件会被跳过而不重写；它们不会得到部分编辑。
+- 若预览在成功后变得 stale，apply 可能失败。resolve 回调会比较替换总数与各文件计数，并返回错误结果，而不是对不匹配的预览静默报告成功。
 
-## Notes
-- `ast_edit` does not expose the native `lang`, `strictness`, `selector`, `maxReplacements`, `failOnParseError`, or `timeoutMs` fields to the model. The runtime fixes the call shape to a preview-first, smart-strictness, best-effort parse mode.
-- Mixed-language scopes are supported: the native layer infers each candidate's language and compiles each rule per discovered language. A pattern that parses for only some languages rewrites those files and reports parse issues for incompatible languages.
-- Idempotency is not enforced syntactically. A rewrite like `foo($A) -> foo($A)` previews zero changes because output equals input; a rewrite that keeps matching its own output may still produce replacements on repeated calls.
-- Rewrites are accumulated per file, then applied from the end of the file backward after an overlap check. Independent matches can coexist; overlapping matches abort the run.
-- Native rewrite rule order is by pattern-string sort, not by the original `ops` array order, because `normalize_rewrite_map(...)` sorts the `(pattern, rewrite)` pairs.
-- Preview/apply parity is validated by totals and per-file counts after the apply rerun, not by a byte-for-byte diff of every replacement payload.
+## 备注
+- `ast_edit` 不向模型暴露原生 `lang`、`strictness`、`selector`、`maxReplacements`、`failOnParseError` 或 `timeoutMs` 字段。运行时把调用形态固定为预览优先、smart strictness、best-effort 解析模式。
+- 支持混合语言作用域：原生层推断每个候选的语言，并按发现的语言分别编译每条规则。仅对部分语言可解析的模式会重写这些语言的文件，并对不兼容的语言上报解析问题。
+- 幂等性不做语法层面的强制。像 `foo($A) -> foo($A)` 这样的重写预览为零变更，因为输出等于输入；会持续匹配自身输出的重写在重复调用时仍可能产生替换。
+- 重写按文件累积，随后在重叠检查后从文件末尾向前应用。相互独立的命中可以共存；重叠的命中会中止整轮运行。
+- 原生重写规则的顺序按模式字符串排序，而非按原始 `ops` 数组顺序，因为 `normalize_rewrite_map(...)` 会对 `(pattern, rewrite)` 对排序。
+- 预览/应用的一致性通过 apply 重跑后的总数与各文件计数校验，而非对每个替换载荷做逐字节 diff。

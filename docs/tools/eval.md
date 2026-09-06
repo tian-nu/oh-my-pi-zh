@@ -1,34 +1,34 @@
 # eval
 
-> Execute one Python or JavaScript cell in a persistent language runtime. One tool call is one cell; state survives later calls.
+> 在常驻的 language runtime 中执行一个 Python 或 JavaScript cell。一次工具调用就是一个 cell；状态在后续调用中保留。
 
-> **Notice:** Do not shell out to `python -c`, `bun -e`, or `node -e` through `bash` for ad-hoc code. `eval` provides retained state, structured `display()` capture, tool/subagent bridges, streaming, cancellation, and artifact-backed truncation.
+> **注意：** 不要为了临时代码而通过 `bash` 去 shell 调用 `python -c`、`bun -e` 或 `node -e`。`eval` 提供常驻状态、结构化的 `display()` 捕获、工具/子 agent 桥接、流式输出、取消与工件托底的截断。
 
-## Source
-- Entry and dynamic schema: `packages/coding-agent/src/tools/eval.ts`
-- Backend enablement: `packages/coding-agent/src/tools/eval-backends.ts`
-- Model-facing prompt: `packages/coding-agent/src/prompts/tools/eval.md`
-- Code Mode transport (Codex `code_mode_only` sessions demote non-essential tools into an eval bridge): `packages/coding-agent/src/tools/eval-format/code-mode-declarations.ts`, prompt `packages/coding-agent/src/prompts/tools/eval-code-mode.md`
-- Shared contracts: `packages/coding-agent/src/eval/backend.ts`, `types.ts`, `executor-base.ts`, `kernel-base.ts`
-- Host bridges: `packages/coding-agent/src/eval/agent-bridge.ts`, `completion-bridge.ts`, `concurrency-bridge.ts`, `budget-bridge.ts`
-- JavaScript: `packages/coding-agent/src/eval/js/`
-- Python: `packages/coding-agent/src/eval/py/`
-- Output/truncation: `packages/coding-agent/src/session/streaming-output.ts`
-- Python internals: `docs/python-repl.md`
+## 源码
+- 入口与动态 schema：`packages/coding-agent/src/tools/eval.ts`
+- 后端启用：`packages/coding-agent/src/tools/eval-backends.ts`
+- 面向模型的 prompt：`packages/coding-agent/src/prompts/tools/eval.md`
+- Code Mode 传输（Codex `code_mode_only` 会话把非必需工具降级为 eval 桥接）：`packages/coding-agent/src/tools/eval-format/code-mode-declarations.ts`、prompt `packages/coding-agent/src/prompts/tools/eval-code-mode.md`
+- 共享契约：`packages/coding-agent/src/eval/backend.ts`、`types.ts`、`executor-base.ts`、`kernel-base.ts`
+- 宿主桥接：`packages/coding-agent/src/eval/agent-bridge.ts`、`completion-bridge.ts`、`concurrency-bridge.ts`、`budget-bridge.ts`
+- JavaScript：`packages/coding-agent/src/eval/js/`
+- Python：`packages/coding-agent/src/eval/py/`
+- 输出/截断：`packages/coding-agent/src/session/streaming-output.ts`
+- Python 内部实现：`docs/python-repl.md`
 
-## Inputs
+## 输入
 
-The params object is one cell. There is no `cells` array, header parser, language sniffing, or implicit fallback. Run incremental steps as separate tool calls; each language keeps its own state.
+params 对象就是一个 cell。没有 `cells` 数组、头解析器、语言嗅探或隐式回退。把增量步骤拆成独立的工具调用；每种语言各自保留自己的状态。
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `language` | `"py" \| "js"` | Yes | Explicit backend token. Normally the live schema includes only enabled runtimes. |
-| `code` | `string` | Yes | Cell body, verbatim. |
-| `title` | `string` | No | Short transcript label. |
-| `timeout` | `number` | No | Runtime-work timeout in seconds. Default 30; `0` disables the cell timeout. Nonzero values are clamped by the tool timeout policy (`TOOL_TIMEOUTS.eval`: 1–3600 s) and `tools.maxTimeout`. |
-| `reset` | `boolean` | No | Recreate this language's retained runtime before execution. Other language runtimes are untouched. Default `false`. |
+| `language` | `"py" \| "js"` | 是 | 显式的后端 token。通常活动的 schema 只包含已启用的运行时。 |
+| `code` | `string` | 是 | cell 正文，原样执行。 |
+| `title` | `string` | 否 | 简短的 transcript 标签。 |
+| `timeout` | `number` | 否 | 运行时工作超时（秒）。默认 30；`0` 禁用 cell 超时。非零值按工具超时策略（`TOOL_TIMEOUTS.eval`：1–3600 秒）与 `tools.maxTimeout` 钳制。 |
+| `reset` | `boolean` | 否 | 执行前重建该语言的常驻运行时。其他语言运行时不受影响。默认 `false`。 |
 
-Example across three calls:
+三个调用串联的示例：
 
 ```json
 {"language":"py","title":"imports","code":"import json\nfrom pathlib import Path"}
@@ -42,163 +42,163 @@ Example across three calls:
 {"language":"py","title":"reuse state","code":"display(sorted(data['dependencies']))"}
 ```
 
-## Backend availability
+## 后端可用性
 
-`resolveEvalBackends(...)` combines settings with environment overrides:
+`resolveEvalBackends(...)` 把设置与环境覆盖组合起来：
 
-| Token | Runtime | Setting/default | Environment override | Additional prerequisite |
+| Token | 运行时 | 设置/默认值 | 环境变量覆盖 | 额外前提条件 |
 | --- | --- | --- | --- | --- |
-| `py` | retained IPython-style Python kernel | `eval.py=true` | `PI_PY` | usable configured Python interpreter/kernel |
-| `js` | retained Bun worker VM | `eval.js=true` | `PI_JS` | bundled JS runtime |
+| `py` | 常驻的 IPython 风格 Python 内核 | `eval.py=true` | `PI_PY` | 可用的已配置 Python 解释器/内核 |
+| `js` | 常驻的 Bun worker VM | `eval.js=true` | `PI_JS` | 捆绑的 JS 运行时 |
 
-When at least one runtime is enabled, disabled runtimes are removed from the session-scoped wire schema and model prompt. A requested unavailable runtime raises `ToolError`; the tool never substitutes another language. `eval.tools.enabled=true` (default) independently controls whether kernel-defined tools and the `tools` subagent fields are advertised and usable.
+当至少一个运行时启用时，被禁用的运行时会从会话级 wire schema 与模型 prompt 中移除。请求不可用的运行时会抛出 `ToolError`；该工具从不替换为另一种语言。`eval.tools.enabled=true`（默认）独立控制内核定义的工具与 `tools` 子 agent 字段是否被宣传与可用。
 
-## Outputs
+## 输出
 
-`execute()` returns one text content block plus any image blocks. `onUpdate` streams the active cell's output and details while it runs.
+`execute()` 返回一个文本内容块，外加任意图像块。`onUpdate` 在运行期间流式输出活动 cell 的输出与 details。
 
-- Text is stdout/stderr plus model-visible JSON `display()` values and image dimension notes.
-- Image-only success reports `(displayed N image(s); no text output)`; a cell with no visible output reports `(no output)`.
-- A nonzero backend exit appends `Command exited with code N`, marks the cell `error`, and sets `details.isError`.
-- Cancellation returns the captured output or `Command aborted`, with `details.isError=true`.
+- 文本为 stdout/stderr，加上模型可见的 JSON `display()` 值与图像尺寸说明。
+- 仅图像的成功报告 `(displayed N image(s); no text output)`；无可见输出的 cell 报告 `(no output)`。
+- 非零的后端退出会追加 `Command exited with code N`，把 cell 标记为 `error`，并设置 `details.isError`。
+- 取消返回已捕获的输出或 `Command aborted`，并带 `details.isError=true`。
 
-`EvalToolDetails`:
+`EvalToolDetails`：
 
-- `cells`: a one-element `EvalCellResult[]` with `index`, `title?`, `code`, backend `language`, `output`, `status`, `durationMs?`, `exitCode?`, `statusEvents?`, and `hasMarkdown?`.
-- `language`: the backend used; `languages`: the distinct backend list. These retain the historical multi-cell-compatible shape, but a current call has one backend.
-- `jsonOutputs`: values captured through structured display.
-- `images`: present on live updates when images have arrived; final images are content blocks.
-- `statusEvents`: deduplicated helper/tool status events.
-- `notice`: optional backend notice.
-- `meta`: output truncation/artifact metadata supplied by `toolResult(...)`.
-- `async`: present when the cell was auto-backgrounded as an async job (`{ state, jobId, type: "eval" }`).
-- `isError`: set for backend failure or cancellation.
+- `cells`：单元素 `EvalCellResult[]`，含 `index`、`title?`、`code`、后端 `language`、`output`、`status`、`durationMs?`、`exitCode?`、`statusEvents?` 与 `hasMarkdown?`。
+- `language`：所用的后端；`languages`：不同后端的列表。它们保留历史的多 cell 兼容形态，但一次当前调用只有一个后端。
+- `jsonOutputs`：通过结构化 display 捕获的值。
+- `images`：图像到达时出现在实时更新中；最终图像是 content blocks。
+- `statusEvents`：去重后的辅助函数/工具状态事件。
+- `notice`：可选的后端说明。
+- `meta`：由 `toolResult(...)` 提供的输出截断/工件元数据。
+- `async`：cell 作为异步任务被自动后台化时出现（`{ state, jobId, type: "eval" }`）。
+- `isError`：后端失败或取消时设置。
 
-The renderer merges call and result inline, syntax-highlights from the declared language, renders markdown and JSON trees specially, and shows timeout/truncation metadata. `session.allocateOutputArtifact?.("eval")` backs spilled output; `artifact://...` in `meta` reaches the full capture.
+渲染器把调用与结果内联合并，按声明的语言做语法高亮，特殊渲染 markdown 与 JSON 树，并显示超时/截断元数据。`session.allocateOutputArtifact?.("eval")` 为溢出的输出提供托底；`meta` 中的 `artifact://...` 可取得完整捕获。
 
-## Execution flow
+## 执行流程
 
-1. `EvalTool` builds a session-specific schema from enabled languages. It is essential, strict, `approval="exec"`, and `concurrency="exclusive"` within one agent session.
-2. `execute()` maps `py/js` to `python/js`, resolves availability, and wraps the single input in the renderer-compatible internal cell list.
-3. It obtains the retained executor id from `session.getEvalSessionId?.()` or `defaultEvalSessionId(session)`, allocates the output sink/artifact, and registers the run through `trackEvalExecution?.(...)`.
-4. The timeout defaults to 30 seconds. `0` creates no watchdog. Otherwise `IdleTimeout` is combined with tool and session abort signals.
-5. Waiting on `agent()` and `completion()` handles emits pause/resume status operations: time spent in those host bridges does not consume the cell's runtime-work budget. Compute, output, status helpers, and ordinary `tool.*` calls do consume it.
-6. The selected backend receives cwd, retained session id, session file, kernel owner, reset flag, callbacks, and cancellation signal.
-7. Output chunks stream into an artifact-aware `OutputSink` and live tail. Rich displays are separated into JSON, image, markdown, and status channels.
-8. Success, nonzero exit, and cancellation are assembled into the result shapes above. The output sink is finalized even when execution fails.
+1. `EvalTool` 从已启用的语言构建会话专属 schema。它是 essential、strict、`approval="exec"`，并且在一个 agent 会话内 `concurrency="exclusive"`。
+2. `execute()` 把 `py/js` 映射到 `python/js`，解析可用性，并把单个输入包装进渲染器兼容的内部 cell 列表。
+3. 它从 `session.getEvalSessionId?.()` 或 `defaultEvalSessionId(session)` 取得常驻 executor id，分配输出 sink/工件，并通过 `trackEvalExecution?.(...)` 登记本次运行。
+4. 超时默认 30 秒。`0` 不创建看门狗。否则 `IdleTimeout` 与工具及会话的中止信号组合。
+5. 等待 `agent()` 与 `completion()` 句柄时会发出 pause/resume 状态操作：在这些宿主桥接中消耗的时间不计入 cell 的运行时工作预算。计算、输出、状态辅助函数与普通 `tool.*` 调用会计入。
+6. 所选后端收到 cwd、常驻会话 id、会话文件、内核 owner、reset 标志、回调与取消信号。
+7. 输出块流式进入工件感知的 `OutputSink` 与实时尾部。富 display 被分成 JSON、图像、markdown 与状态通道。
+8. 成功、非零退出与取消组装成上面的结果形态。即使执行失败，输出 sink 也会被收尾。
 
-## Auto-backgrounding
+## 自动后台化
 
-With `eval.autoBackground.enabled` (default `false`), a cell that outlives `eval.autoBackground.thresholdMs` (default 60000 ms) is converted into a managed async job instead of blocking the turn:
+启用 `eval.autoBackground.enabled`（默认 `false`）时，超过 `eval.autoBackground.thresholdMs`（默认 60000 ms）的 cell 会转成托管的异步任务，而不是阻塞当前回合：
 
-- The tool foreground-waits for `resolveAutoBackgroundWaitMs(thresholdMs, clampedCellTimeoutMs)`: the threshold, clamped down to the cell's own clamped timeout minus a 1 s buffer so a deadline expiry resolves inline rather than backgrounding moments before it fires. Raising `timeout` therefore does not extend foreground execution beyond the threshold. A threshold of `0` backgrounds immediately.
-- On backgrounding, the tool returns the live output tail plus `Backgrounded as job <id>; result will be delivered automatically.`, with `details.async = { state: "running", jobId, type: "eval" }`. The job's completion is delivered later like a backgrounded bash command.
-- A queued user/peer message (steer) arriving mid-wait backgrounds the cell immediately ("Backgrounded early to handle an incoming message; the cell keeps running.").
-- At the async-job manager's running-job capacity the tool falls through to ordinary foreground execution instead of failing.
-- A failed, cancelled, or timed-out cell is reported as a failed background job (an errored execution is re-entered into the job manager's failure path), never as a silent success.
+- 工具按 `resolveAutoBackgroundWaitMs(thresholdMs, clampedCellTimeoutMs)` 前台等待：阈值会向下钳制到 cell 自身钳制后的超时再减去 1 秒缓冲，使期限到期内联解决，而不是在触发前片刻转入后台。因此调高 `timeout` 不会把前台执行延长到阈值之外。阈值为 `0` 时立即后台化。
+- 后台化时，工具返回实时输出尾部加 `Backgrounded as job <id>; result will be delivered automatically.`，并带 `details.async = { state: "running", jobId, type: "eval" }`。任务完成稍后像后台化的 bash 命令一样送达。
+- 等待期间到达排队的用户/对等消息（steer）会立即把 cell 转入后台（“Backgrounded early to handle an incoming message; the cell keeps running.”）。
+- 在异步任务管理器的运行中任务容量已满时，工具会落入普通前台执行，而不是失败。
+- 失败、取消或超时的 cell 会报告为失败的后台任务（出错执行会重新进入任务管理器的失败路径），绝不会静默显示成功。
 
-## Runtime behavior
+## 运行时行为
 
 ### JavaScript (`js`)
 
-- Persistent worker VM keyed by `js:${sessionId}`; `reset` recreates the VM and is destructive to concurrent users of that session id.
-- Runs under Bun and exposes host globals including `Bun`, `Buffer`, `fetch`, `process`, `require`, `createRequire`, `fs`, and Web Crypto.
-- Top-level `await` and bare `return` work through async wrapping.
-- Static top-level imports and dynamic imports are rewritten through the local module loader. Local filesystem imports are cache-busted between cells; bare package and scheme/URL imports retain normal cache identity.
-- Awaited regions can interleave with another session sharing the executor; synchronous code still blocks the worker event loop.
+- 常驻 worker VM 以 `js:${sessionId}` 为键；`reset` 重建 VM，对共享该会话 id 的并发用户有破坏性。
+- 在 Bun 下运行，暴露包括 `Bun`、`Buffer`、`fetch`、`process`、`require`、`createRequire`、`fs` 与 Web Crypto 在内的宿主全局。
+- 顶层 `await` 与裸 `return` 通过异步包装可用。
+- 静态顶层导入与动态导入经由本地模块加载器重写。cell 之间本地文件系统导入会做缓存破坏；裸包与 scheme/URL 导入保留正常的缓存身份。
+- 等待区域可与共享该 executor 的其他会话交错；同步代码仍会阻塞 worker 的事件循环。
 
 ### Python (`py`)
 
-- Retained kernels are keyed by `python:${sessionId}`, normalized cwd, and interpreter. `python.kernelMode="per-call"` instead creates and shuts down a fresh kernel for each invocation.
-- The runner uses one persistent asyncio event loop, so top-level `await` works; `asyncio.run(...)` is invalid there.
-- MIME frames support status, PNG, JSON, markdown, plain text, and HTML-to-markdown conversion.
-- Interactive stdin is rejected with `Kernel requested stdin; interactive input is not supported.`
-- Synchronous blocks use the default executor with copied ContextVars; Python bytecode still contends on the GIL.
+- 常驻内核以 `python:${sessionId}`、规范化 cwd 与解释器为键。`python.kernelMode="per-call"` 则每次调用创建并关闭一个新内核。
+- runner 使用一个持久的 asyncio 事件循环，因此顶层 `await` 可用；`asyncio.run(...)` 在那里非法。
+- MIME 帧支持 status、PNG、JSON、markdown、纯文本，以及 HTML 到 markdown 的转换。
+- 交互式 stdin 会被拒绝，报 `Kernel requested stdin; interactive input is not supported.`。
+- 同步块使用带复制 ContextVars 的默认 executor；Python 字节码仍在 GIL 上竞争。
 
-## Prelude helpers
+## Prelude 辅助函数
 
-All enabled runtimes expose equivalent helpers where the language permits:
+所有启用的运行时都会在语言允许的范围内暴露等价辅助函数：
 
-- `display(value)`, `print(...)`
-- `read(path, offset?, limit?)`, `write(path, content)`, `env(...)`, `output(...)`
-- `tool.<name>(args)` for a normal session tool call (async in both runtimes: `await tool.read({...})`)
-- `@tool` / `tool(fn, {...})` to define kernel-local tools for subagents (`eval.tools.enabled`, default on)
-- `completion(...)`, `agent(...)`, `wait(...)`, `workpool(...)`
-- `log(message)`, `phase(title)`, `budget`
+- `display(value)`、`print(...)`
+- `read(path, offset?, limit?)`、`write(path, content)`、`env(...)`、`output(...)`
+- `tool.<name>(args)` 用于普通会话工具调用（两个运行时中都是异步的：`await tool.read({...})`）
+- `@tool` / `tool(fn, {...})` 为子 agent 定义内核本地工具（`eval.tools.enabled`，默认开）
+- `completion(...)`、`agent(...)`、`wait(...)`、`workpool(...)`
+- `log(message)`、`phase(title)`、`budget`
 
-JS helpers are asynchronous; Python file helpers are synchronous while `tool.<name>()` is a coroutine. `read()` delegates non-`local://` schemes to the registered read tool, resolves `local://` through injected roots, and reads regular paths relative to cwd. `write()` accepts regular and `local://` paths but rejects other protocol URLs.
+JS 辅助函数是异步的；Python 文件辅助函数是同步的，而 `tool.<name>()` 是协程。`read()` 把非 `local://` scheme 委托给已注册的 read 工具，经注入的根解析 `local://`，并读取相对于 cwd 的常规路径。`write()` 接受常规与 `local://` 路径，但拒绝其他协议 URL。
 
-`display()` captures JSON-compatible structures, images, markdown, or text according to the backend.
+`display()` 按后端捕获 JSON 兼容结构、图像、markdown 或文本。
 
 ### `completion()`
 
-A stateless, tool-free one-shot model call that returns a `CompletionHandle` immediately:
+一次无状态、无工具的一次性模型调用，立即返回 `CompletionHandle`：
 
-- JS: `completion(prompt, { model?, system?, schema? })`; Python: keyword form with `model`, `system`, and `schema`.
-- `model`: `"smol"`, `"default"`, or `"slow"` tier; default is the active/default tier.
-- `schema`: JSON Schema for a synthetic `respond` tool; `.wait()` then returns parsed data.
-- Unresolved tier and invalid arguments fail the call itself; missing credentials, error/abort stops, empty output, and invalid structured output surface from `.wait()`.
-- Handles are process-local, owned by the calling agent, and evicted 30 minutes after settling (or when the owner session ends).
+- JS：`completion(prompt, { model?, system?, schema? })`；Python：带 `model`、`system`、`schema` 的关键字形式。
+- `model`：`"smol"`、`"default"` 或 `"slow"` 档位；默认是活动/默认档位。
+- `schema`：为合成 `respond` 工具提供的 JSON Schema；`.wait()` 随后返回解析后的数据。
+- 无法解析的档位与无效参数会让调用本身失败；凭据缺失、错误/中止停止、空输出与无效结构化输出从 `.wait()` 浮现。
+- Handle 是进程本地的、由调用 agent 持有，并在落定 30 分钟后（或 owner 会话结束时）被驱逐。
 
 ### `agent()`
 
-Registers one background subagent job and returns an `AgentHandle` immediately:
+注册一个后台子 agent 任务并立即返回 `AgentHandle`：
 
-- JS: `await agent(prompt, { agent?, label?, schema?, schemaMode?, isolated?, apply?, merge?, tools? })`; Python uses keyword arguments (`schema_mode`).
-- Preflight (spawn policy, unknown agent, `task.maxRecursionDepth`, hard turn budget, plan-mode isolation controls, unknown `tools` names) fails the call synchronously; execution failures surface from `.wait()`.
-- `agent` defaults from the current spawn policy; the selected agent's frontmatter model and settings always apply (no per-call `model`). `schema` overrides agent/session schemas; `schemaMode`/`schema_mode` chooses `permissive` or `strict`.
-- `isolated` requests isolation. `apply` controls whether captured changes are integrated; `merge=false` selects patch mode while the normal setting controls branch mode.
-- `tools`: names of kernel-defined tools (see below) the child may call; each call executes inside the caller's kernel.
-- Handle surface: `.id`, `.agent`, `.handle` (`agent://<id>`), `.status`, `.done()`, `.wait(timeout?)`, `.send(message)`, `.cancel()`, `.output()`. Python handles are awaitable; JavaScript uses `await handle.wait()`.
-- The job is a regular async job owned by the calling agent: an unwaited result auto-delivers like a backgrounded `task`, and `wait()` consumes the delivery so it is not replayed. Eval subagents are kept alive (addressable through `hub`/`history://`) and **do not share the caller's eval executor** (`shareEvalSession=false`).
+- JS：`await agent(prompt, { agent?, label?, schema?, schemaMode?, isolated?, apply?, merge?, tools? })`；Python 用关键字参数（`schema_mode`）。
+- 预检（spawn 策略、未知 agent、`task.maxRecursionDepth`、硬性回合预算、plan 模式隔离控制、未知 `tools` 名称）同步地让调用失败；执行失败从 `.wait()` 浮现。
+- `agent` 默认来自当前 spawn 策略；所选 agent 的 frontmatter model 与设置始终生效（没有逐调用 `model`）。`schema` 覆盖 agent/会话 schema；`schemaMode`/`schema_mode` 选择 `permissive` 或 `strict`。
+- `isolated` 请求隔离。`apply` 控制捕获的变更是否被整合；`merge=false` 选择 patch 模式，而常规设置控制 branch 模式。
+- `tools`：子 agent 可调用的内核定义工具（见下文）名称；每次调用都在调用方内核内执行。
+- Handle 接口：`.id`、`.agent`、`.handle`（`agent://<id>`）、`.status`、`.done()`、`.wait(timeout?)`、`.send(message)`、`.cancel()`、`.output()`。Python handle 可 await；JavaScript 用 `await handle.wait()`。
+- 该任务是由调用 agent 持有的常规异步任务：未等待的结果会像后台化的 `task` 一样自动送达，而 `wait()` 消费这次送达以免重放。Eval 子 agent 保持存活（可经 `hub`/`history://` 寻址），并且**不共享**调用方的 eval executor（`shareEvalSession=false`）。
 
 ### `wait()`
 
-`wait(handles, timeout=None, raise_errors=True)` (JS: `wait(handles, { timeout, raiseErrors })`) blocks until every listed agent/completion handle settles and returns their values in input order. A handle still running after `timeout` raises `TimeoutError`; a failed or cancelled handle raises its error, or — with `raise_errors=False` — is returned in its slot as the error object. Waiting pauses the cell watchdog and defers an external abort until the wait unwinds; an abort cancels the waited handles.
+`wait(handles, timeout=None, raise_errors=True)`（JS：`wait(handles, { timeout, raiseErrors })`）阻塞到列出的每个 agent/completion 句柄都落定，并按输入顺序返回它们的值。`timeout` 后仍在运行的句柄抛出 `TimeoutError`；失败或取消的句柄抛出其错误，或——在 `raise_errors=False` 时——在其槽位中作为错误对象返回。等待会暂停 cell 看门狗，并把外部中止推迟到等待解除；中止会取消被等待的句柄。
 
 ### `workpool()`
 
-`workpool(agent=None, name=None, context=None, tools=None)` creates a pool of keep-alive subagents bounded by the live `task.maxConcurrency`:
+`workpool(agent=None, name=None, context=None, tools=None)` 创建由存活的 `task.maxConcurrency` 约束的 keep-alive 子 agent 池：
 
-- `.push(*items)` returns item ids (`<pool>#<seq>`). An item goes to the idle worker with the lowest context usage, spawns a new worker while the pool has room, or is queued round-robin onto a busy worker and handed over as one batch when that worker's turn ends. `eval.workpool.freshAgents=true` instead queues for a fresh agent whenever capacity frees, so every item gets a new context and no follow-up batching occurs.
-- A worker submits each batch item separately through `yield({ key: <1-based number>, data: {...} })` or `yield({ key, error })`; each response names the remaining keys, and the final key ends the turn automatically.
-- The pool name is both its aggregate async-job id and label. Its first full drain settles and closes the pool; create a new named pool for another phase. The aggregate result auto-delivers once, while internal batch jobs are consumed.
-- Completely blocked? Leave eval and call `hub` with `{ op: "wait", ids: [pool.name] }`; re-issue until settled. There is no `pool.wait()`, so the kernel remains free to serve `@tool` calls.
-- `.status()` reports worker/item counts and context usage; `.peek()` returns a non-consuming `{ batches, pending }` snapshot; `.close()` drops still-queued items. Pools are process-local; after a restart their workers remain parked keep-alive agents reachable through `hub`.
+- `.push(*items)` 返回 item id（`<pool>#<seq>`）。某个 item 会交给上下文占用最低的空闲 worker；池中有余量时派生新 worker；或轮询排队到忙碌的 worker 上，并在该 worker 回合结束时作为一批移交。`eval.workpool.freshAgents=true` 则在有空闲容量时排队给新 agent，因此每个 item 都有新上下文，也不会发生后续批处理。
+- worker 通过 `yield({ key: <1-based number>, data: {...} })` 或 `yield({ key, error })` 单独提交每批 item；每个响应点名剩余的 keys，最后一个 key 自动结束该回合。
+- 池名同时是它的聚合异步任务 id 与标签。它的第一次完全排空即落定并关闭池；下一阶段请新建命名池。聚合结果自动送达一次，内部批次任务则被消费。
+- 完全卡住？离开 eval，用 `{ op: "wait", ids: [pool.name] }` 调用 `hub`；反复发出直到落定。没有 `pool.wait()`，因此内核保持空闲以服务 `@tool` 调用。
+- `.status()` 报告 worker/item 数量与上下文占用；`.peek()` 返回不消费的 `{ batches, pending }` 快照；`.close()` 丢弃仍排队的 item。池是进程本地的；重启后它们的 worker 仍是可通过 `hub` 触达的停驻 keep-alive agent。
 
-### Kernel-defined tools (`@tool` / `tool(fn)`)
+### 内核定义的工具（`@tool` / `tool(fn)`）
 
-With `eval.tools.enabled` (default on), a cell can turn a function into a tool other agents may call:
+启用 `eval.tools.enabled`（默认开）时，cell 可以把一个函数变成其他 agent 可调用的工具：
 
-- Python: `@tool` / `@tool(name=..., description=...)`; the JSON Schema is inferred from type hints (`str`, `int`, `float`, `bool`, `list[...]`, `dict[...]`, `Literal`, `Optional`, `Annotated[T, "description"]`) and defaults; positional-only parameters are rejected. Async functions are awaited.
-- JS: `tool(fn, { name?, description?, parameters? })`; `fn` receives one args object.
-- `tool.defined()` lists names; `tool.undefine(name)` removes one. Redefining replaces.
-- Consumers: `task` items' `tools`, `agent(tools=...)`, `workpool(tools=...)`. The host resolves names against the retained Python and JS kernels (a name defined in both is an error) and exposes each as an essential custom tool of the child session. Calls run on a dedicated runner thread (Python) or inside the worker's run context (JS), so a parent cell blocked in `wait()` can still serve them. A tool that raises reports the error to the caller; the kernel keeps running. A kernel that is not running yields an error result instead.
-- Unknown names fail the `task`/`agent()` call synchronously; plan mode rejects `tools` entirely.
+- Python：`@tool` / `@tool(name=..., description=...)`；JSON Schema 从类型注解（`str`、`int`、`float`、`bool`、`list[...]`、`dict[...]`、`Literal`、`Optional`、`Annotated[T, "description"]`）与默认值推断；仅位置参数会被拒绝。异步函数会被 await。
+- JS：`tool(fn, { name?, description?, parameters? })`；`fn` 接收一个 args 对象。
+- `tool.defined()` 列出名称；`tool.undefine(name)` 移除一个。重新定义即替换。
+- 消费方：`task` item 的 `tools`、`agent(tools=...)`、`workpool(tools=...)`。宿主对照常驻 Python 与 JS 内核解析名称（两者都定义同名是错误），并把每个名称作为子会话的 essential 自定义工具暴露。调用在专用 runner 线程（Python）或 worker 的运行上下文内（JS）执行，因此阻塞在 `wait()` 中的父 cell 仍可服务它们。抛异常的工具会把错误报告给调用方；内核继续运行。未运行的内核则返回错误结果。
+- 未知名称同步地让 `task`/`agent()` 调用失败；plan 模式完全拒绝 `tools`。
 
-## Side effects and cancellation
+## 副作用与取消
 
-- Prelude helpers may read/write files and call arbitrary registered tools; JS exposes network-capable `fetch`.
-- Python uses a retained subprocess kernel speaking framed local IPC. JavaScript uses a worker VM.
-- Retained runtimes have no heartbeat or idle timer; they survive calls until reset, owner disposal (`EvalRunner.disposeKernels()` calls `disposeKernelSessionsByOwner` and `disposeVmContextsByOwner` keyed by `kernelOwnerId`, in `packages/coding-agent/src/session/eval-runner.ts`), or process exit.
-- Cancellation is destructive when needed: JS terminates its worker; managed kernels interrupt and may escalate to shutdown. A reset is likewise destructive to concurrent work sharing that backend session.
-- Eval-driven `agent()` children stay registered as keep-alive agents; owner teardown cancels their jobs, releases completion handles, and closes the owner's work pools.
+- Prelude 辅助函数可读写文件并调用任意已注册工具；JS 暴露可联网的 `fetch`。
+- Python 使用通过帧化本地 IPC 通信的常驻子进程内核。JavaScript 使用 worker VM。
+- 常驻运行时没有心跳或空闲定时器；它们一直存活到 reset、owner 处置（`EvalRunner.disposeKernels()` 按 `kernelOwnerId` 调用 `disposeKernelSessionsByOwner` 与 `disposeVmContextsByOwner`，位于 `packages/coding-agent/src/session/eval-runner.ts`）或进程退出。
+- 需要时取消是有破坏性的：JS 终止其 worker；托管内核会被中断，并可能升级到关闭。reset 同样对共享该后端会话的并发工作有破坏性。
+- Eval 驱动的 `agent()` 子级保持注册为 keep-alive agent；owner 拆除会取消它们的任务、释放 completion handle，并关闭 owner 的 work pool。
 
-## Limits and errors
+## 限制与错误
 
-- Default timeout: 30 seconds; `0` disables. Nonzero timeouts are clamped through `clampTimeout("eval", ..., tools.maxTimeout)`.
-- Output sink default window: 50 KiB (`DEFAULT_MAX_BYTES`); live tail: 100 KiB; truncation helpers cap at 3000 lines.
-- Each JSON display value included in model-visible text is capped at 8000 characters; the full structured value remains in `jsonOutputs`.
-- Transcript preview defaults to 10 lines.
-- Eval subagent spawning obeys `task.maxRecursionDepth` (default `2`; negative values allow unlimited depth). Helper fan-out uses `task.maxConcurrency` (default 32, `0` unbounded).
-- Malformed params are schema errors; unavailable/disabled backends and missing session are `ToolError`s.
-- Runtime exceptions become backend output with nonzero exit. Interactive stdin is an error. Output truncation does not fail the call.
-- A dead retained managed kernel may be replaced and the invocation retried once by its executor.
+- 默认超时：30 秒；`0` 禁用。非零超时经 `clampTimeout("eval", ..., tools.maxTimeout)` 钳制。
+- 输出 sink 默认窗口：50 KiB（`DEFAULT_MAX_BYTES`）；实时尾部：100 KiB；截断辅助函数以 3000 行为上限。
+- 每个进入模型可见文本的 JSON display 值以 8000 字符为上限；完整结构化值保留在 `jsonOutputs` 中。
+- Transcript 预览默认 10 行。
+- Eval 子 agent 生成遵循 `task.maxRecursionDepth`（默认 `2`；负值允许无限深度）。辅助函数扇出使用 `task.maxConcurrency`（默认 32，`0` 无界）。
+- 畸形参数是 schema 错误；不可用/被禁用的后端与缺失会话是 `ToolError`。
+- 运行时异常变成带非零退出的后端输出。交互式 stdin 是错误。输出截断不会让调用失败。
+- 死掉的常驻托管内核可被替换，其 executor 会重试该调用一次。
 
-## Notes
+## 备注
 
-- One call is one cell. Use separate calls to exploit persistence and rerun only the failed step.
-- State is isolated by language; resetting Python does not reset JS.
-- Current schema tokens are only `py` and `js`; long language names are renderer/approval formatting aliases, not wire values.
-- The former multi-cell `cells` payload, `*** Cell` parser, sniffing fallback, and constrained `eval.lark` grammar are removed.
-- Parent and ordinary task subagents may share an inherited eval executor id; children created by eval's own `agent()` explicitly do not.
+- 一次调用就是一个 cell。用独立调用利用持久性，只重跑失败的那一步。
+- 状态按语言隔离；重置 Python 不会重置 JS。
+- 当前 schema token 只有 `py` 与 `js`；长语言名是渲染器/批准格式化的别名，不是 wire 值。
+- 原先的多 cell `cells` 载荷、`*** Cell` 解析器、嗅探回退与受限的 `eval.lark` 语法均已移除。
+- 父级与普通 task 子 agent 可以共享继承来的 eval executor id；eval 自己的 `agent()` 创建的子级明确不共享。

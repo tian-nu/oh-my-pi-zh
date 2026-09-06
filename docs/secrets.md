@@ -1,63 +1,63 @@
-# Secret Obfuscation
+# 机密混淆
 
-Prevents sensitive values (API keys, tokens, passwords) from being sent to LLM providers. When enabled, configured secrets and built-in credential-shaped token patterns are replaced before provider-visible text leaves the process. Reversible placeholders are restored in model-authored tool arguments before execution and when local session context is rebuilt for display or resume.
+防止敏感值（API key、token、密码）被发送给 LLM provider。启用后，配置的机密与内置的、形似凭据的 token 模式会在 provider 可见文本离开进程之前被替换。可逆占位符会在执行前于模型编写的工具参数中还原，也会在本地会话上下文为显示或恢复而重建时还原。
 
-## Enabling
+## 启用
 
-Disabled by default. Toggle via `/settings` UI or directly in `config.yml`:
+默认禁用。可通过 `/settings` UI 或直接在 `config.yml` 中切换：
 
 ```yaml
 secrets:
   enabled: true
 ```
 
-## How it works
+## 工作原理
 
-1. On session startup, secrets are collected from:
-   - **Environment variables** whose names match common secret patterns (`KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PASS`, `AUTH`, `CREDENTIAL`, `PRIVATE`, `OAUTH`) with values at least 8 characters long
-   - **`secrets.yml` files** (see below)
-   - A built-in reversible regex for common GitHub-, GitLab-, and OpenAI-style credential tokens that appear only in session content or tool results
+1. 会话启动时，机密从以下来源收集：
+   - **环境变量**：名称匹配常见机密模式（`KEY`、`SECRET`、`TOKEN`、`PASSWORD`、`PASS`、`AUTH`、`CREDENTIAL`、`PRIVATE`、`OAUTH`）且值长度至少 8 个字符
+   - **`secrets.yml` 文件**（见下文）
+   - 内置的可逆 regex，用于只出现在会话内容或工具结果中的常见 GitHub、GitLab 与 OpenAI 风格凭据 token
 
-2. Provider-visible text has matching values replaced with deterministic placeholders such as `$$3P8W5JH1TK2Q$$`, `$$3P8W5JH1TK2Q:L$$`, or `$$GITHUBTOKEN_3P8W5JH1TK2Q:L$$`.
+2. provider 可见文本中的匹配值会被替换为确定性占位符，例如 `$$3P8W5JH1TK2Q$$`、`$$3P8W5JH1TK2Q:L$$` 或 `$$GITHUBTOKEN_3P8W5JH1TK2Q:L$$`。
 
-3. Live model-authored tool arguments are deep-walked and placeholders are restored before the tool executes. Session context restores placeholders for local display/resume and re-obfuscates it before provider replay. Replace-mode substitutions are one-way and are not restored.
+3. 实时的、模型编写的工具参数会被深度遍历，占位符在工具执行前被还原。会话上下文在为本地显示/恢复还原占位符后，会在 provider 重放前再次混淆。Replace 模式的替换是单向的，不会被还原。
 
-Two modes control what happens to each secret:
+两种模式决定每个机密的处理方式：
 
-| Mode                  | Behavior                                                                                      | Reversible |
+| 模式 | 行为 | 可逆 |
 | --------------------- | --------------------------------------------------------------------------------------------- | ---------- |
-| `obfuscate` (default) | Replaced with a deterministic `$$HASH(:hint)$$` or `$$FRIENDLY_HASH(:hint)$$` placeholder     | Yes        |
-| `replace`             | Replaced with the configured `replacement`, or a deterministic same-length value when omitted | No         |
+| `obfuscate`（默认） | 替换为确定性的 `$$HASH(:hint)$$` 或 `$$FRIENDLY_HASH(:hint)$$` 占位符 | 是 |
+| `replace` | 替换为配置的 `replacement`；省略时替换为确定性的等长值 | 否 |
 
-Obfuscate-mode plain values and regex matches shorter than 8 characters are ignored to avoid redacting ordinary short words. Replace mode can handle short values; a replace-mode regex with no custom replacement is rejected only when every possible 1–2 character match would be impossible to redact to a distinct stable value.
+混淆模式下，短于 8 个字符的明文值与 regex 匹配会被忽略，以免把普通的短词也打码。Replace 模式可以处理短值；一个没有自定义 replacement 的 replace 模式 regex，只有在所有可能的 1–2 字符匹配都无法被脱敏成互不相同且稳定的值时才会被拒绝。
 
 ## secrets.yml
 
-Define custom secret entries in YAML. Two locations are checked:
+在 YAML 中定义自定义机密条目。会检查两个位置：
 
-| Level   | Path                       | Purpose                     |
+| 级别 | 路径 | 用途 |
 | ------- | -------------------------- | --------------------------- |
-| Global  | `~/.omp/agent/secrets.yml` | Secrets across all projects |
-| Project | `<cwd>/.omp/secrets.yml`   | Project-specific secrets    |
+| 全局 | `~/.omp/agent/secrets.yml` | 所有项目共用的机密 |
+| 项目 | `<cwd>/.omp/secrets.yml` | 项目专属的机密 |
 
-Project entries override global entries with matching `content`.
+项目条目会覆盖 `content` 相同的全局条目。
 
-### Schema
+### 结构
 
-Each entry in the array has these fields:
+数组中的每个条目都包含以下字段：
 
-| Field          | Type                         | Required | Description                                                   |
+| 字段 | 类型 | 必需 | 描述 |
 | -------------- | ---------------------------- | -------- | ------------------------------------------------------------- |
-| `type`         | `"plain"` or `"regex"`       | Yes      | Match strategy                                                |
-| `content`      | string                       | Yes      | The secret value (plain) or regex pattern (regex)             |
-| `mode`         | `"obfuscate"` or `"replace"` | No       | Default: `"obfuscate"`                                        |
-| `replacement`  | string                       | No       | Custom replacement (replace mode only)                        |
-| `flags`        | string                       | No       | Regex flags (regex type only)                                 |
-| `friendlyName` | string                       | No       | Sanitized model-visible label for obfuscate-mode placeholders |
+| `type` | `"plain"` 或 `"regex"` | 是 | 匹配策略 |
+| `content` | string | 是 | 机密值（plain）或 regex 模式（regex） |
+| `mode` | `"obfuscate"` 或 `"replace"` | 否 | 默认：`"obfuscate"` |
+| `replacement` | string | 否 | 自定义替换值（仅 replace 模式） |
+| `flags` | string | 否 | Regex 标志（仅 regex 类型） |
+| `friendlyName` | string | 否 | 混淆模式占位符经净化的、模型可见的标签 |
 
-### Examples
+### 示例
 
-#### Plain secrets
+#### 明文机密
 
 ```yaml
 # Obfuscate a specific API key (default mode)
@@ -71,9 +71,9 @@ Each entry in the array has these fields:
   replacement: "********"
 ```
 
-#### Friendly names
+#### 友好名称
 
-`friendlyName` adds semantic context to reversible obfuscation placeholders without exposing the secret value:
+`friendlyName` 为可逆混淆占位符添加语义上下文，而不会暴露机密值：
 
 ```yaml
 - type: plain
@@ -81,20 +81,20 @@ Each entry in the array has these fields:
   friendlyName: GitHub Token
 ```
 
-This produces placeholders shaped like `$$GITHUBTOKEN_3P8W5JH1TK2Q:L$$`. The friendly name is sanitized to uppercase letters and digits, capped at 32 characters, and omitted if it sanitizes to an empty value. Invalid optional `friendlyName` metadata does not disable the secret entry; the secret still obfuscates with an unlabeled placeholder. A label is also dropped for a particular placeholder if it would expose a configured literal secret or match a configured secret regex.
+这会生成形如 `$$GITHUBTOKEN_3P8W5JH1TK2Q:L$$` 的占位符。友好名称会被净化为大写字母与数字，上限 32 个字符；若净化后为空值则省略。无效的可选 `friendlyName` 元数据不会禁用该机密条目；该机密仍会以无标签占位符混淆。若某个标签会暴露配置的字面机密或匹配到配置的机密 regex，该特定占位符也会去掉标签。
 
-The 12-character hash base is an HMAC of the exact secret under a private per-install key (stored at `~/.omp/agent/secret-placeholder.key`, or `$XDG_STATE_HOME/omp/secret-placeholder.key` on XDG-enabled installs, never sent to a model). This prevents a transcript reader from dictionary-hashing a placeholder back to its secret. Secrets that differ only by case receive independent bases, so seeing one placeholder does not let a provider synthesize another by changing the case hint. If the key cannot be persisted on the lazy built-in-token path, the session warns and uses a process-ephemeral key; obfuscation remains reversible within that process but placeholders are not stable across restarts. A case-hint suffix labels the casing of the redacted value:
+12 字符的哈希基数是确切机密在私有、按安装实例生成的密钥下的 HMAC（密钥存储于 `~/.omp/agent/secret-placeholder.key`，在启用 XDG 的安装中为 `$XDG_STATE_HOME/omp/secret-placeholder.key`，绝不会发送给模型）。这可以防止阅读转录的人用字典哈希把占位符反推回其机密。仅大小写不同的机密会获得独立的基数，因此看到某个占位符并不能让 provider 通过改动大小写提示来合成另一个。若在惰性的内置 token 路径上无法持久化密钥，会话会发出警告并改用进程内临时密钥；混淆在该进程内仍然可逆，但占位符跨重启不稳定。大小写提示后缀标注被脱敏值的大小写：
 
-| Hint | Meaning                                        |
+| 提示 | 含义 |
 | ---- | ---------------------------------------------- |
-| `:U` | all cased ASCII letters are uppercase          |
-| `:L` | all cased ASCII letters are lowercase          |
-| `:C` | first cased ASCII letter uppercase, rest lower |
-| `:M` | mixed ASCII casing                             |
+| `:U` | 所有含大小写的 ASCII 字母均为大写 |
+| `:L` | 所有含大小写的 ASCII 字母均为小写 |
+| `:C` | 首个含大小写的 ASCII 字母大写，其余小写 |
+| `:M` | ASCII 大小写混合 |
 
-`friendlyName` on regex entries labels the configured regex entry, not the matched value. Keep regex labels broad enough to be true for every match.
+regex 条目上的 `friendlyName` 标注的是所配置的 regex 条目，而非匹配到的值。请让 regex 标签足够宽泛，使其对每个匹配都为真。
 
-#### Regex secrets
+#### 正则机密
 
 ```yaml
 # Obfuscate any AWS-style key
@@ -111,9 +111,9 @@ The 12-character hash base is an HMAC of the exact secret under a private per-in
   content: "/bearer\\s+[a-zA-Z0-9._~+\\/=-]+/i"
 ```
 
-Regex entries always scan globally (the `g` flag is enforced automatically). The regex literal syntax `/pattern/flags` is supported as an alternative to separate `content` + `flags` fields. Escaped slashes within the pattern (`\\/`) are handled correctly.
+regex 条目总是全局扫描（`g` 标志会被自动强制）。regex 字面量语法 `/pattern/flags` 作为分开的 `content` + `flags` 字段之外的另一种写法得到支持。模式内的转义斜杠（`\\/`）会被正确处理。
 
-#### Replace mode with regex
+#### 使用 regex 的 Replace 模式
 
 ```yaml
 # One-way replace connection strings (not reversible)
@@ -123,24 +123,24 @@ Regex entries always scan globally (the `g` flag is enforced automatically). The
   replacement: "postgres://***"
 ```
 
-## Invalid entries and files
+## 无效条目与文件
 
-- A missing `secrets.yml` is treated as no entries.
-- A parse failure or non-array document is ignored with a warning.
-- Invalid entries are skipped individually with a warning. `type` must be `plain` or `regex`; `content` must be a non-empty string; `mode`, `replacement`, `flags`, and regex syntax are validated as shown above.
-- Invalid optional `friendlyName` metadata is dropped without dropping an otherwise valid entry.
+- 缺失的 `secrets.yml` 视为没有任何条目。
+- 解析失败或非数组的文档会被忽略并发出警告。
+- 无效条目会被逐条跳过并发出警告。`type` 必须是 `plain` 或 `regex`；`content` 必须是非空字符串；`mode`、`replacement`、`flags` 与 regex 语法按上文所示校验。
+- 无效的可选 `friendlyName` 元数据会被丢弃，而不会连带丢弃本应有效的条目。
 
-## Interaction with automatic detection
+## 与自动检测的交互
 
-Environment variables are collected first, file-defined entries follow, and the built-in credential regex runs last so configured entries see matching content before the generic detector. Duplicate environment values are collapsed within the environment scan. Environment and file entries are not deduplicated against each other, so a plain value present in both is registered twice; both placeholders restore to the same secret, so deobfuscation is unaffected.
+环境变量最先收集，文件定义的条目随后，内置的凭据 regex 最后运行，这样配置条目能在通用检测器之前看到匹配内容。环境扫描中重复的环境值会被折叠。环境与文件条目之间不做去重，因此同时出现在两者的明文值会被注册两次；两个占位符都会还原到同一个机密，所以去混淆不受影响。
 
-## Key files
+## 关键文件
 
-- `packages/coding-agent/src/secrets/index.ts` -- loading, merging, env var collection
-- `packages/coding-agent/src/secrets/obfuscator.ts` -- `SecretObfuscator` class, placeholder generation, message obfuscation
-- `packages/coding-agent/src/secrets/regex.ts` -- regex literal parsing and compilation
-- `packages/coding-agent/src/config/settings-schema.ts` -- `secrets.enabled` setting definition
+- `packages/coding-agent/src/secrets/index.ts` -- 加载、合并、环境变量收集
+- `packages/coding-agent/src/secrets/obfuscator.ts` -- `SecretObfuscator` 类、占位符生成、消息混淆
+- `packages/coding-agent/src/secrets/regex.ts` -- regex 字面量解析与编译
+- `packages/coding-agent/src/config/settings-schema.ts` -- `secrets.enabled` 设置的定义
 
-## See also
+## 参见
 
-- [`auth-broker-gateway.md`](./auth-broker-gateway.md) -- remote credential vault and forward-proxy that keep provider OAuth refresh tokens and access tokens off developer hosts entirely (complementary to in-process obfuscation).
+- [`auth-broker-gateway.md`](./auth-broker-gateway.md) -- 远程凭据保险库与转发代理，可让 provider 的 OAuth 刷新令牌与访问令牌完全不出现在开发者主机上（与进程内混淆互补）。

@@ -1,26 +1,26 @@
 # SDK
 
-The SDK is the in-process integration surface for `@oh-my-pi/pi-coding-agent`.
-Use it when you want direct access to agent state, event streaming, tool wiring, and session control from a Bun process.
+SDK 是 `@oh-my-pi/pi-coding-agent` 的进程内集成接口。
+当你想在 Bun 进程中直接访问 agent 状态、事件流、工具接线与会话控制时，使用它。
 
-If you need cross-language/process isolation, use RPC mode instead.
+若你需要跨语言/进程隔离，请改用 RPC 模式。
 
-## Installation
+## 安装
 
 ```bash
 bun add @oh-my-pi/pi-coding-agent
 ```
 
-Requires Bun 1.3.14 or newer. Before the first model-backed prompt, configure
-credentials for a provider or run a keyless local provider; see
-[Providers](./providers.md). Session construction can succeed without an
-available model, but prompting cannot.
+需要 Bun 1.3.14 或更高版本。在第一次真正发起由模型驱动的 prompt 之前，请先为某个
+provider 配置凭据，或运行一个无需密钥的本地 provider；参见
+[Providers](./providers.md)。没有可用模型时会话仍能成功构建，但
+无法发起 prompt。
 
-## Entry points
+## 入口点
 
-The package root, `@oh-my-pi/pi-coding-agent`, is the complete embedding surface. It includes `createAgentSession` and the focused `/sdk` exports, plus lower-level session, auth, model, mode, extension, and tool APIs.
+包根路径 `@oh-my-pi/pi-coding-agent` 是完整的嵌入接口。它包含 `createAgentSession` 和聚焦的 `/sdk` 导出，以及更底层的 session、auth、model、mode、extension 与 tool API。
 
-Import these core embedding APIs from the package root:
+请从包根路径导入这些核心嵌入 API：
 
 - `createAgentSession`
 - `SessionManager`
@@ -29,12 +29,12 @@ Import these core embedding APIs from the package root:
 - `ModelRegistry`
 - `AgentRegistry`
 - `discoverAuthStorage`
-- Discovery helpers (`discoverExtensions`, `discoverSkills`, `discoverContextFiles`, `discoverPromptTemplates`, `discoverSlashCommands`, `discoverCustomTSCommands`, `discoverMCPServers`)
-- Tool factory surface (`createTools`, `BUILTIN_TOOLS`, tool classes)
+- 发现辅助函数（`discoverExtensions`、`discoverSkills`、`discoverContextFiles`、`discoverPromptTemplates`、`discoverSlashCommands`、`discoverCustomTSCommands`、`discoverMCPServers`）
+- 工具工厂接口（`createTools`、`BUILTIN_TOOLS`、工具类）
 
-The narrower `@oh-my-pi/pi-coding-agent/sdk` subpath exports `createAgentSession`, its option/result types, `Settings`, `AgentRegistry`, discovery and system-prompt helpers, workspace-tree helpers, selected extension/MCP/tool types, and selected tool classes/factories. It does **not** export `SessionManager`, `AuthStorage`, or `ModelRegistry`; import those three from the package root as the examples below do.
+更窄的 `@oh-my-pi/pi-coding-agent/sdk` 子路径导出 `createAgentSession`、它的 option/result 类型、`Settings`、`AgentRegistry`、发现与 system-prompt 辅助函数、workspace-tree 辅助函数、部分 extension/MCP/tool 类型，以及部分工具类/工厂。它**不**导出 `SessionManager`、`AuthStorage` 或 `ModelRegistry`；请像下面的示例那样从包根路径导入这三个。
 
-## Quick start (auto-discovery defaults)
+## 快速开始（自动发现默认值）
 
 ```ts
 import { createAgentSession } from "@oh-my-pi/pi-coding-agent";
@@ -59,27 +59,27 @@ unsubscribe();
 await session.dispose();
 ```
 
-## What `createAgentSession()` discovers by default
+## `createAgentSession()` 默认会发现什么
 
-`createAgentSession()` follows “provide to override, omit to discover”.
+`createAgentSession()` 遵循“提供则覆盖，省略则发现”的原则。
 
-If omitted, it resolves:
+若省略，它会解析出：
 
 - `cwd`: `getProjectDir()`
 - `agentDir`: `~/.omp/agent` (via `getAgentDir()`)
 - `authStorage`: `discoverAuthStorage(agentDir)`
-- `modelRegistry`: `new ModelRegistry(authStorage)` + background `refreshInBackground()` when the registry is not provided
+- `modelRegistry`: `new ModelRegistry(authStorage)` + 未提供 registry 时在后台 `refreshInBackground()`
 - `settings`: `await Settings.init({ cwd, agentDir })`
-- `sessionManager`: `SessionManager.create(cwd, SessionManager.getDefaultSessionDir(cwd, agentDir))` (file-backed)
-- skills/rules/context files/prompt templates/slash commands/extensions/custom TS commands
-- built-in tools via `createTools(...)`
-- MCP tools (enabled by default; Exa MCP servers are folded into native Exa integration, and browser automation MCP servers are filtered when the built-in Eval browser prelude is enabled)
-- LSP integration (enabled by default)
-- `eventBus`: new `EventBus()` unless supplied
+- `sessionManager`: `SessionManager.create(cwd, SessionManager.getDefaultSessionDir(cwd, agentDir))`（基于文件）
+- 技能/规则/上下文文件/prompt 模板/slash 命令/扩展/自定义 TS 命令
+- 内置工具，通过 `createTools(...)` 构建
+- MCP 工具（默认启用；Exa MCP server 会并入原生 Exa 集成；当内置的 Eval browser prelude 启用时，浏览器自动化 MCP server 会被过滤）
+- LSP 集成（默认启用）
+- `eventBus`: 除非已提供，否则新建 `EventBus()`
 
-### Required vs optional inputs
+### 必需与可选输入
 
-Typically you must provide only what you want to control:
+通常你只需提供你希望控制的那些项：
 
 ```ts
 function createAgentSession(
@@ -87,22 +87,22 @@ function createAgentSession(
 ): Promise<CreateAgentSessionResult>;
 ```
 
-- **Must provide**: nothing for a minimal session
-- **Usually provide explicitly** in embedders:
-  - `sessionManager` (if you need in-memory or custom location)
-  - `authStorage` + `modelRegistry` (if you own credential/model lifecycle)
-  - `model` or `modelPattern` (if deterministic model selection matters)
-  - `settings` (if you need isolated/test config)
+- **必须提供**：最小会话不需要任何东西
+- **嵌入方中通常显式提供**：
+  - `sessionManager`（若你需要内存态或自定义位置）
+  - `authStorage` + `modelRegistry`（若你自行管理凭据/模型生命周期）
+  - `model` 或 `modelPattern`（若确定性的模型选择很重要）
+  - `settings`（若你需要隔离/测试配置）
 
-For multiple concurrent top-level sessions in one process, pass a private
-`AgentRegistry` to each session. The default process-global registry admits
-only one `"Main"` identity per generation.
+若要在同一进程内并发运行多个顶层会话，请为每个会话传入一个
+私有的 `AgentRegistry`。默认的进程级全局 registry 每个 generation 只允许
+一个 `"Main"` 身份。
 
-## Session manager behavior (persistent vs in-memory)
+## 会话管理器行为（持久 vs 内存）
 
-`AgentSession` always uses a `SessionManager`; behavior depends on which factory you use.
+`AgentSession` 总是使用 `SessionManager`；行为取决于你使用哪个工厂。
 
-### File-backed (default)
+### 基于文件（默认）
 
 ```ts
 import { createAgentSession, SessionManager } from "@oh-my-pi/pi-coding-agent";
@@ -114,11 +114,11 @@ const { session } = await createAgentSession({
 console.log(session.sessionFile); // absolute .jsonl path
 ```
 
-- Persists conversation/messages/state deltas to session files.
-- Supports resume/open/list/fork workflows.
-- `session.sessionFile` is defined.
+- 将对话/消息/状态增量持久化到会话文件。
+- 支持 resume/open/list/fork 工作流。
+- `session.sessionFile` 已定义。
 
-### In-memory
+### 内存
 
 ```ts
 import { createAgentSession, SessionManager } from "@oh-my-pi/pi-coding-agent";
@@ -130,11 +130,11 @@ const { session } = await createAgentSession({
 console.log(session.sessionFile); // undefined
 ```
 
-- No filesystem persistence.
-- Useful for tests, ephemeral workers, request-scoped agents.
-- Session methods still work, but persistence-specific behaviors (file resume/fork paths) are naturally limited.
+- 不做文件系统持久化。
+- 适用于测试、临时 worker 以及按请求作用域的 agent。
+- 会话方法仍可用，但与持久化相关的行为（文件 resume/fork 路径）会自然受限。
 
-### Resume/open/list helpers
+### resume/open/list 辅助函数
 
 ```ts
 import { SessionManager } from "@oh-my-pi/pi-coding-agent";
@@ -144,15 +144,15 @@ const listed = await SessionManager.list(process.cwd());
 const opened = listed[0] ? await SessionManager.open(listed[0].path) : null;
 ```
 
-## Model and auth wiring
+## 模型与认证接线
 
-`createAgentSession()` uses `ModelRegistry` + `AuthStorage` for model selection and API key resolution.
+`createAgentSession()` 使用 `ModelRegistry` + `AuthStorage` 进行模型选择与 API key 解析。
 
-If both `authStorage` and `modelRegistry` are supplied,
-`modelRegistry.authStorage` MUST be the same instance; session creation rejects
-divergent stores.
+如果同时提供了 `authStorage` 和 `modelRegistry`，
+`modelRegistry.authStorage` 必须是同一个实例；会话创建会拒绝
+不一致的存储。
 
-### Explicit wiring
+### 显式接线
 
 ```ts
 import {
@@ -179,31 +179,31 @@ const { session } = await createAgentSession({
 });
 ```
 
-### Selection order when `model` is omitted
+### 省略 `model` 时的选择顺序
 
-When no explicit `model`/`modelPattern` is provided:
+当未显式提供 `model`/`modelPattern` 时：
 
-1. restore model from existing session (if restorable + key available)
-2. settings default model role (`default`)
-3. an authenticated provider-default model in availability order (falling back to the first authenticated available model when no provider default is present)
+1. 从已有会话恢复模型（若可恢复且 key 可用）
+2. settings 的默认模型角色（`default`）
+3. 按可用性顺序取已认证的 provider 默认模型（没有 provider 默认模型时回退到第一个已认证的可用模型）
 
-If restore fails, `modelFallbackMessage` explains fallback.
+若恢复失败，`modelFallbackMessage` 会说明回退情况。
 
-### Auth priority
+### 认证优先级
 
-`AuthStorage.getApiKey(...)` resolves in this order:
+`AuthStorage.getApiKey(...)` 按以下顺序解析：
 
-1. runtime override (`setRuntimeApiKey`, used by CLI `--api-key`)
-2. config-sourced API key override (`models.yml` provider `apiKey`)
-3. stored OAuth credential, including refresh when needed
-4. API key persisted by a successful `/login`
-5. provider environment variables
-6. other stored API-key credential in `agent.db` / broker-backed storage
-7. custom-provider resolver fallback
+1. 运行时覆盖（`setRuntimeApiKey`，供 CLI `--api-key` 使用）
+2. 来自配置的 API key 覆盖（`models.yml` 的 provider `apiKey`）
+3. 已存储的 OAuth 凭据（必要时含刷新）
+4. 成功的 `/login` 所持久化的 API key
+5. provider 环境变量
+6. `agent.db` / broker 后端存储中的其他已存 API-key 凭据
+7. 自定义 provider resolver 回退
 
-## Event subscription model
+## 事件订阅模型
 
-Subscribe with `session.subscribe(listener)`; it returns an unsubscribe function.
+用 `session.subscribe(listener)` 订阅；它会返回一个退订函数。
 
 ```ts
 const unsubscribe = session.subscribe((event) => {
@@ -221,7 +221,7 @@ const unsubscribe = session.subscribe((event) => {
 });
 ```
 
-`AgentSessionEvent` includes core `AgentEvent` plus session-level events:
+`AgentSessionEvent` 包含核心的 `AgentEvent`，外加会话级事件：
 
 - `auto_compaction_start` / `auto_compaction_end`
 - `auto_retry_start` / `auto_retry_end`
@@ -234,29 +234,29 @@ const unsubscribe = session.subscribe((event) => {
 - `notice`
 - `goal_updated`
 
-`agent_end` includes `messages`, optional telemetry fields, and
-`isTerminal?: boolean`. When `isTerminal` is `false`, maintenance or async
-delivery will resume the session before its true final settle. Subscribers that
-use `agent_end` as a completion signal MUST wait for `isTerminal !== false`.
-Treat an absent field as terminal for compatibility with older runtimes.
+`agent_end` 包含 `messages`、可选的 telemetry 字段，以及
+`isTerminal?: boolean`。当 `isTerminal` 为 `false` 时，维护或异步
+投递会在会话真正收尾之前恢复它。把 `agent_end` 当作完成信号使用的
+订阅者必须等待 `isTerminal !== false`。
+为了兼容旧版运行时，请把字段缺失视为终态。
 
-## Prompt lifecycle
+## Prompt 生命周期
 
-`session.prompt(text, options?)` is the primary entry point.
+`session.prompt(text, options?)` 是主要入口点。
 
-Behavior:
+行为：
 
-1. optional command/template expansion (`/` commands, custom commands, file slash commands, prompt templates)
-2. if currently streaming:
-   - `streamingBehavior: "steer" | "followUp"` chooses how `prompt()` queues
-   - extension `sendUserMessage(content)` defaults to steer when `deliverAs` is omitted
-   - queued messages are preserved instead of throwing work away
-3. if idle:
-   - validates model + API key
-   - appends user message
-   - starts agent turn
+1. 可选的命令/模板展开（`/` 命令、自定义命令、file slash 命令、prompt 模板）
+2. 若当前正在 streaming：
+   - `streamingBehavior: "steer" | "followUp"` 决定 `prompt()` 如何排队
+   - 省略 `deliverAs` 时，extension 的 `sendUserMessage(content)` 默认走 steer
+   - 排队的消息会被保留，而非丢弃
+3. 若处于空闲：
+   - 校验模型 + API key
+   - 追加用户消息
+   - 开始一个 agent turn
 
-Related APIs:
+相关 API：
 
 - `sendUserMessage(content, { deliverAs? })`
 - `steer(text, images?)`
@@ -264,13 +264,13 @@ Related APIs:
 - `sendCustomMessage({ customType, content, ... }, { deliverAs?, triggerTurn? })`
 - `abort()`
 
-`deliverAs: "aside"` (both APIs) delivers at the next agent step boundary without interrupting the current tool batch, instead of steering (which skips remaining tools) or waiting for the run to finish. When the session is idle both start a turn instead (in plan mode the custom message is folded into context without a turn).
+`deliverAs: "aside"`（两个 API 都支持）在下一个 agent step 边界处投递消息，不打断当前工具批次——不同于 steer（会跳过剩余工具）或等待运行结束。当会话空闲时，两者都会改为启动一个 turn（在 plan 模式下，自定义消息会被并入上下文而不启动 turn）。
 
-## `AgentSession` lifecycle and disposal
+## `AgentSession` 生命周期与释放
 
-Call `await session.dispose()` when the embedder is completely done with a session. `dispose()` starts disposal itself and is idempotent: repeated or concurrent calls receive the same teardown promise, so shutdown events and owned resources are not drained twice.
+当嵌入方完全不再使用某个会话时，调用 `await session.dispose()`。`dispose()` 会自行启动释放流程且幂等：重复或并发调用都会收到同一个 teardown promise，因此 shutdown 事件与自有资源不会被重复清理。
 
-`beginDispose()` is the synchronous admission barrier for wrappers that must await their own teardown before calling `dispose()`. Call it before the wrapper's first `await`; otherwise deferred work can enter the gap. It immediately marks the session disposed, cancels memory startup, title generation, and auto-learn capture, clears queued yield/asides, stops advisor runtime, detaches aside delivery, and rejects new eval executions. Deferred session work checks the disposed state and is dropped or skipped. `beginDispose()` is also idempotent, and the later `dispose()` call remains required to finish asynchronous cleanup.
+`beginDispose()` 是同步的准入屏障，供那些必须在调用 `dispose()` 之前先 await 自身 teardown 的包装器使用。要在包装器的第一个 `await` 之前调用它；否则延迟工作可能趁机进入这个间隙。它会立即将会话标记为已释放，取消记忆启动、标题生成与自动学习捕获，清空排队的 yield/asides，停止 advisor 运行时，解除 aside 投递，并拒绝新的 eval 执行。延迟的会话工作会检查已释放状态并被丢弃或跳过。`beginDispose()` 同样幂等，而且之后仍需调用 `dispose()` 来完成异步清理。
 
 ```ts
 import type { AgentSession } from "@oh-my-pi/pi-coding-agent";
@@ -285,24 +285,24 @@ async function closeEmbeddedSession(
 }
 ```
 
-During asynchronous disposal, the session records and synchronously flushes its exit diagnostic, emits `session_shutdown` once, stops extension fallback timers, aborts retries, compaction, and the active agent turn, and gives post-prompt and auto-learn work bounded time to settle. It then tears down session-owned async jobs, eval kernels, browser tabs, native computer sessions, MCP connections, advisor state, and memory state concurrently. These subsystem drains are best-effort and bounded where applicable; failures are logged rather than preventing the remaining subsystem cleanup.
+在异步释放期间，会话会记录并同步刷出它的退出诊断，只发出一次 `session_shutdown`，停止扩展回退定时器，中止重试、Compaction 与正在进行的 agent turn，并给 post-prompt 和自动学习工作有限的收尾时间。随后它会并发地拆除会话自有的异步任务、eval 内核、浏览器标签页、native computer 会话、MCP 连接、advisor 状态与记忆状态。这些子系统清理都是尽力而为且在适用处有界；失败只会被记录，不会阻止其余子系统的清理。
 
-Only after work capable of appending session entries has settled does disposal clean up an empty moved session, close the `SessionManager`, close provider session state, disconnect the agent, and remove listeners. A failure from the final persistence cleanup or `SessionManager.close()` rejects the shared disposal promise; individual provider-session close failures are logged.
+只有当可能追加会话条目的工作都收尾之后，释放才会清理空的 moved 会话、关闭 `SessionManager`、关闭 provider 会话状态、断开 agent 并移除监听器。若最后的持久化清理或 `SessionManager.close()` 失败，会拒绝共享的 disposal promise；单个 provider 会话的关闭失败只会被记录。
 
-## Tools and extension integration
+## 工具与扩展集成
 
-### Built-ins and filtering
+### 内置工具与过滤
 
-- Built-ins come from `createTools(...)` and `BUILTIN_TOOLS`.
-- `toolNames` requests named tools and can enable tools that are disabled by
-  default; by itself it is **not** an allowlist.
-- Set `restrictToolNames: true` to limit the session to the names in
-  `toolNames`. Restricted sessions disable ambient MCP, extensions, custom
-  commands, and LSP by default.
-- In a restricted session, SDK-supplied `customTools` are excluded unless
-  `allowRestrictedCustomTools: true` and their names also appear in
-  `toolNames`.
-- Hidden tools (for example `yield`) are opt-in unless required by options.
+- 内置工具来自 `createTools(...)` 和 `BUILTIN_TOOLS`。
+- `toolNames` 请求指定的工具，也能启用默认被禁用的工具；
+  它本身**不是**白名单。
+- 设置 `restrictToolNames: true` 可将会话限制在
+  `toolNames` 所列名称之内。受限会话默认禁用 ambient MCP、扩展、自定义
+  命令和 LSP。
+- 在受限会话中，SDK 提供的 `customTools` 会被排除，除非
+  `allowRestrictedCustomTools: true` 且它们的名称也出现在
+  `toolNames` 中。
+- 隐藏工具（例如 `yield`）默认为 opt-in，除非选项强制要求提供。
 
 ```ts
 const { session } = await createAgentSession({
@@ -312,31 +312,31 @@ const { session } = await createAgentSession({
 });
 ```
 
-### Extensions
+### 扩展
 
-- `extensions`: inline `ExtensionFactory[]`
-- `additionalExtensionPaths`: load extra extension files
-- `disableExtensionDiscovery`: disable ambient scanning; explicit paths and
-  inline factories still load
-- `preloadedExtensions`: reuse an extension set loaded early by the same
-  session-owning process. Never pass loaded extension instances from a parent
-  to another session; use `preloadedExtensionPaths` so each session gets its
-  own `ExtensionAPI` binding.
+- `extensions`: 内联的 `ExtensionFactory[]`
+- `additionalExtensionPaths`: 加载额外的扩展文件
+- `disableExtensionDiscovery`: 禁用 ambient 扫描；显式路径和
+  内联工厂仍会加载
+- `preloadedExtensions`: 复用由同一会话宿主进程提前加载的扩展集。
+  不要把父进程已加载的扩展实例传给其他会话；
+  应使用 `preloadedExtensionPaths`，让每个会话都拿到
+  自己的 `ExtensionAPI` 绑定。
 
-### Runtime tool set changes
+### 运行时工具集变更
 
-`AgentSession` supports runtime activation updates:
+`AgentSession` 支持运行时的激活更新：
 
 - `getActiveToolNames()`
 - `getAllToolNames()`
 - `setActiveToolsByName(names)`
 - `refreshMCPTools(mcpTools)`
 
-System prompt is rebuilt to reflect active tool changes.
+system prompt 会重建，以反映活动工具的变化。
 
-## Discovery helpers
+## 发现辅助函数
 
-Use these when you want partial control without recreating internal discovery logic:
+当你想做部分控制、又不想重建内部发现逻辑时，使用这些函数：
 
 - `discoverAuthStorage(agentDir?)`
 - `discoverExtensions(cwd?)`
@@ -348,19 +348,19 @@ Use these when you want partial control without recreating internal discovery lo
 - `discoverMCPServers(cwd?)`
 - `buildSystemPrompt(options?)`
 
-## Subagent-oriented options
+## 面向子 agent 的选项
 
-For SDK consumers building orchestrators (similar to task executor flow):
+适用于构建编排器（类似 task executor 流程）的 SDK 使用者：
 
-- `outputSchema`: passes structured output expectation into tool context
-- `outputSchemaMode`: selects permissive or strict structured-output enforcement
-- `requireYieldTool`: forces `yield` tool inclusion
-- `taskDepth`: recursion-depth context for nested task sessions
-- `parentTaskPrefix`: artifact naming prefix for nested task outputs
+- `outputSchema`: 把结构化输出期望传入工具上下文
+- `outputSchemaMode`: 选择宽松或严格的结构化输出强制方式
+- `requireYieldTool`: 强制包含 `yield` 工具
+- `taskDepth`: 嵌套任务会话的递归深度上下文
+- `parentTaskPrefix`: 嵌套任务输出的工件命名前缀
 
-These are optional for normal single-agent embedding.
+对普通的单 agent 嵌入来说，这些都是可选的。
 
-## `createAgentSession()` return value
+## `createAgentSession()` 的返回值
 
 ```ts
 type CreateAgentSessionResult = {
@@ -379,21 +379,21 @@ type CreateAgentSessionResult = {
 };
 ```
 
-Use `setToolUIContext(...)` only if your embedder provides UI capabilities that tools/extensions should call into.
+只有当你的嵌入方提供可供工具/扩展调用的 UI 能力时，才使用 `setToolUIContext(...)`。
 
-## Startup performance
+## 启动性能
 
-`createAgentSession()` runs two background optimizations to overlap I/O with the rest of session setup:
+`createAgentSession()` 会运行两个后台优化，让 I/O 与会话其余初始化过程重叠：
 
-- **Model-host preconnect.** As soon as the model is resolved, the SDK fires a best-effort `fetch.preconnect(model.baseUrl)` so DNS + TCP + TLS + HTTP/2 to the provider's host happens in parallel with extension/skill load, tool registry build, and system-prompt assembly. The first real `fetch(...)` then reuses the warm connection, saving 100–300 ms on transcontinental hops (e.g. residential IP → `api.anthropic.com`). Implementation lives in `preconnectModelHost()` in `packages/coding-agent/src/sdk.ts`. If `fetch.preconnect` is unavailable (non-Bun runtime) or the call throws, the optimization is silently skipped — never a hard dependency. Applies to every mode (interactive, print, RPC, ACP).
-- **Conditional LSP warmup.** Startup LSP servers (those returned by `discoverStartupLspServers(cwd)`) are only warmed when **all** of these hold:
-  - `enableLsp !== false` on the session options, **and**
-  - `options.hasUI === true` (interactive TUI), **and**
-  - the `lsp.lazy` setting is disabled (it defaults to `true`).
+- **模型宿主预连接。** 一旦模型被解析出来，SDK 就会尽力触发一次 `fetch.preconnect(model.baseUrl)`，使到 provider 宿主的 DNS + TCP + TLS + HTTP/2 与扩展/skill 加载、工具注册表构建和 system prompt 组装并行进行。之后第一次真正的 `fetch(...)` 就能复用这条已温热的连接，在跨洲链路上（例如住宅 IP → `api.anthropic.com`）可节省 100–300 ms。实现位于 `packages/coding-agent/src/sdk.ts` 的 `preconnectModelHost()` 中。如果 `fetch.preconnect` 不可用（非 Bun 运行时）或调用抛错，该优化会被静默跳过——它从来不是硬性依赖。适用于所有模式（interactive、print、RPC、ACP）。
+- **有条件的 LSP 预热。** 启动期 LSP server（即 `discoverStartupLspServers(cwd)` 返回的那些）只有在下面**全部**成立时才预热：
+  - 会话选项上 `enableLsp !== false`，**且**
+  - `options.hasUI === true`（交互式 TUI），**且**
+  - `lsp.lazy` 设置被禁用（它默认为 `true`）。
 
-  With `lsp.lazy` enabled — the default — no language servers are launched at startup at all; each server cold-starts on first use, i.e. when the agent invokes the `lsp` tool or an edit/write touches a file whose extension matches the server's `fileTypes`. Print / script / RPC / ACP invocations (`hasUI=false`) skip the warmup regardless of the setting: they don't render the warmup status indicator and typically finish before the language servers would stabilize, so warming them just spends CPU parsing big `initialize` responses concurrently with the LLM stream consumer and jitters perceived latency. Tools that actually need an LSP server still spin one up on demand through `getOrCreateClient()` — only the _startup_ warmup is skipped. The returned `lspServers` field in `CreateAgentSessionResult` is still populated for UI sessions in lazy mode — recognized servers are discovered (no processes spawned) and reported with status `"available"` so the welcome screen and `/status` can list them; it is `undefined` only when `enableLsp === false` or `hasUI === false`.
+  启用 `lsp.lazy`（默认即如此）后，启动时根本不会拉起任何语言服务器；每个服务器都在首次使用时冷启动，即当 agent 调用 `lsp` 工具、或 edit/write 触及扩展名与服务器 `fileTypes` 匹配的文件时。Print / script / RPC / ACP 调用（`hasUI=false`）无论该设置如何都会跳过预热：它们不会渲染预热状态指示器，而且通常在语言服务器稳定之前就已结束，因此预热它们只会让 CPU 与 LLM 流消费者并行解析大型 `initialize` 响应，徒增感知延迟的抖动。真正需要 LSP server 的工具仍会通过 `getOrCreateClient()` 按需拉起一个——被跳过的只是_启动期_预热。在 lazy 模式下，`CreateAgentSessionResult` 返回的 `lspServers` 字段对 UI 会话仍然有值——已识别的服务器会被发现（不派生子进程）并以状态 `"available"` 上报，以便欢迎界面和 `/status` 列出它们；只有当 `enableLsp === false` 或 `hasUI === false` 时它才是 `undefined`。
 
-## Minimal controlled embed example
+## 最小化受控嵌入示例
 
 ```ts
 import {
