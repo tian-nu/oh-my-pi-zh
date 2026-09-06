@@ -632,7 +632,7 @@ async function runCheck(flags: AuthGatewayCommandArgs["flags"]): Promise<void> {
 							? chalk.green("正常    ")
 							: row.ok === false
 								? chalk.red("失败    ")
-								: chalk.yellow("未知    "),
+								: chalk.yellow("未知    ");
 					const base =
 						row.email ?? row.accountId ?? (row.type === "api_key" ? "（api key）" : "（凭据上无身份信息）");
 					// Two subscriptions (orgs) can share one email — without the org a
